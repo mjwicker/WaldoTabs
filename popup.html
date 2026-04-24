@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab Agent Optimizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+    }
+    header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid #2e2e4a;
+    }
+    header h1 { font-size: 14px; font-weight: 600; color: #a78bfa; }
+    header p { font-size: 11px; color: #888; margin-top: 2px; }
+    section { padding: 10px 14px; }
+    .btn {
+      display: block; width: 100%;
+      padding: 7px 10px; margin-bottom: 6px;
+      background: #2e2e4a; border: 1px solid #3e3e5e;
+      color: #e0e0e0; border-radius: 5px;
+      font-size: 12px; cursor: pointer; text-align: left;
+    }
+    .btn:hover { background: #3e3e5e; }
+    .btn.primary { background: #5b21b6; border-color: #7c3aed; color: #fff; }
+    .btn.primary:hover { background: #6d28d9; }
+    #status {
+      font-size: 11px; color: #888;
+      padding: 6px 14px 10px;
+      min-height: 20px;
+    }
+    #status.ok { color: #6ee7b7; }
+    #status.err { color: #f87171; }
+    hr { border: none; border-top: 1px solid #2e2e4a; }
+    .settings-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+    label { font-size: 11px; color: #aaa; }
+    input[type="text"], input[type="password"] {
+      width: 160px; padding: 4px 6px;
+      background: #2e2e4a; border: 1px solid #3e3e5e;
+      color: #e0e0e0; border-radius: 4px; font-size: 11px;
+    }
+    .toggle {
+      position: relative; display: inline-block;
+      width: 34px; height: 18px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #3e3e5e; border-radius: 18px;
+      transition: .2s;
+    }
+    .slider:before {
+      content: ""; position: absolute;
+      height: 12px; width: 12px; left: 3px; bottom: 3px;
+      background: #aaa; border-radius: 50%; transition: .2s;
+    }
+    input:checked + .slider { background: #6d28d9; }
+    input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tab Agent Optimizer</h1>
+    <p>RAM-friendly tab hibernation with AI summaries</p>
+  </header>
+
+  <section>
+    <button class="btn primary" id="optimizeAll">Optimize All Inactive Tabs</button>
+    <button class="btn" id="optimizeCurrent">Optimize Current Tab</button>
+    <button class="btn" id="viewCache">View Cached Tabs (<span id="cacheCount">0</span>)</button>
+  </section>
+
+  <div id="status"></div>
+
+  <hr>
+
+  <section>
+    <div class="settings-row">
+      <label>API Endpoint</label>
+      <input type="text" id="apiEndpoint" placeholder="http://localhost:11434">
+    </div>
+    <div class="settings-row">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="(optional)">
+    </div>
+    <div class="settings-row">
+      <label>Model</label>
+      <input type="text" id="model" placeholder="gpt-4o-mini">
+    </div>
+    <div class="settings-row">
+      <label>Idle threshold (min)</label>
+      <input type="text" id="idleMinutes" placeholder="30" style="width:60px">
+    </div>
+    <div class="settings-row">
+      <label>Auto-optimize</label>
+      <label class="toggle">
+        <input type="checkbox" id="autoOptimize">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <button class="btn" id="saveSettings" style="margin-top:6px">Save Settings</button>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

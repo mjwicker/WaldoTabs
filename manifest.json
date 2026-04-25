@@ -11,15 +11,17 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "waldo-tabs@waldo.local"
+    }
+  },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Waldo Tabs"
-  },
-  "icons": {
-    "48": "icon48.png",
-    "128": "icon128.png"
   }
 }

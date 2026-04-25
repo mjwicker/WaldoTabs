@@ -1,24 +1,29 @@
 {
   "manifest_version": 3,
   "name": "Waldo Tabs",
-  "version": "0.1.1",
-  "description": "Agentic tab conductor — resource tracking, hibernation, AI automation, and puzzle solving for local-first research",
+  "version": "0.2.0",
+  "description": "Agentic tab conductor — resource tracking, hibernation, AI automation, and tab optimization for local-first research workflows",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": [
     "tabs",
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "waldo-tabs@waldo.local"
+      "id": "waldo-tabs@waldo.local",
+      "strict_min_version": "78.0"
     }
   },
   "background": {
-    "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",

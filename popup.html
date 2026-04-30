@@ -19,17 +19,211 @@
     }
     header h1 { font-size: 14px; font-weight: 600; color: #a78bfa; }
     header p { font-size: 11px; color: #888; margin-top: 2px; }
-    section { padding: 10px 14px; }
+
+    .tab-controls {
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid #2e2e4a;
+    }
+    .filter-bar { display: flex; gap: 4px; }
+    .filter-btn {
+      padding: 3px 8px;
+      font-size: 10px;
+      background: #2e2e4a;
+      border: 1px solid #3e3e5e;
+      color: #888;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .filter-btn.active {
+      background: #3e3e5e;
+      color: #e0e0e0;
+      border-color: #7c3aed;
+    }
     .btn {
-      display: block; width: 100%;
-      padding: 7px 10px; margin-bottom: 6px;
-      background: #2e2e4a; border: 1px solid #3e3e5e;
-      color: #e0e0e0; border-radius: 5px;
-      font-size: 12px; cursor: pointer; text-align: left;
+      display: block;
+      padding: 7px 10px;
+      background: #2e2e4a;
+      border: 1px solid #3e3e5e;
+      color: #e0e0e0;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
     }
     .btn:hover { background: #3e3e5e; }
-    .btn.primary { background: #5b21b6; border-color: #7c3aed; color: #fff; }
+    .btn.primary {
+      background: #5b21b6;
+      border-color: #7c3aed;
+      color: #fff;
+    }
     .btn.primary:hover { background: #6d28d9; }
+
+    /* Ollama Wizard */
+    .ollama-wizard { margin: 8px 14px; }
+    .wizard-card {
+      background: #1e1e36;
+      border: 1px solid #7c3aed;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .wizard-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #a855f7;
+      margin-bottom: 6px;
+    }
+    .wizard-desc {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .wizard-label {
+      font-size: 10px;
+      color: #aaa;
+      margin: 8px 0 4px;
+    }
+    .model-options {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .model-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: #e0e0e0;
+      cursor: pointer;
+    }
+    .model-option input { accent-color: #7c3aed; }
+    .model-hint {
+      font-size: 9px;
+      color: #6c6c9c;
+      margin-top: 6px;
+    }
+    .model-hint code {
+      background: #2e2e4a;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #a855f7;
+    }
+    .wizard-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    #ollamaStatus {
+      font-size: 10px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    #ollamaStatus.ok { background: #064e3b; color: #6ee7b7; }
+    #ollamaStatus.err { background: #450a0a; color: #f87171; }
+
+    /* Tab List */
+    .tab-list {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 6px 8px;
+    }
+    .tab-list-empty {
+      padding: 20px;
+      text-align: center;
+      color: #666;
+      font-size: 11px;
+    }
+    .tab-list-empty .hint { margin-top: 4px; color: #555; }
+    .tab-entry {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      margin-bottom: 4px;
+      background: #1e1e36;
+      border: 1px solid #2e2e4a;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tab-entry:hover { border-color: #7c3aed; }
+    .tab-entry.discarded { opacity: 0.75; }
+    .tab-entry.discarded .tab-thumb {
+      filter: grayscale(60%) brightness(0.8);
+    }
+    .tab-thumb {
+      width: 60px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 3px;
+      background: #2e2e4a;
+      flex-shrink: 0;
+    }
+    .tab-thumb-placeholder {
+      width: 60px;
+      height: 40px;
+      background: #2e2e4a;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .tab-info { flex: 1; min-width: 0; }
+    .tab-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tab-domain {
+      font-size: 9px;
+      color: #6c6c9c;
+      margin-top: 1px;
+    }
+    .tab-summary {
+      font-size: 10px;
+      color: #888;
+      margin-top: 3px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .tab-meta {
+      display: flex;
+      gap: 6px;
+      margin-top: 3px;
+      align-items: center;
+    }
+    .tab-badge {
+      font-size: 8px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #3e3e5e;
+      color: #aaa;
+    }
+    .tab-badge.active { background: #065f46; color: #6ee7b7; }
+    .tab-badge.hibernated { background: #4c1d95; color: #c4b5fd; }
+    .tab-wake-btn {
+      padding: 3px 8px;
+      font-size: 9px;
+      background: #5b21b6;
+      border: 1px solid #7c3aed;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      align-self: center;
+      flex-shrink: 0;
+    }
+    .tab-wake-btn:hover { background: #6d28d9; }
+
     #status {
       font-size: 11px; color: #888;
       padding: 6px 14px 10px;
@@ -37,61 +231,137 @@
     }
     #status.ok { color: #6ee7b7; }
     #status.err { color: #f87171; }
+
     hr { border: none; border-top: 1px solid #2e2e4a; }
+
     .settings-row {
-      display: flex; align-items: center;
+      display: flex;
+      align-items: center;
       justify-content: space-between;
       padding: 5px 0;
     }
-    label { font-size: 11px; color: #aaa; }
-    input[type="text"], input[type="password"] {
-      width: 160px; padding: 4px 6px;
-      background: #2e2e4a; border: 1px solid #3e3e5e;
-      color: #e0e0e0; border-radius: 4px; font-size: 11px;
+    .settings-row label { font-size: 11px; color: #aaa; }
+    input[type="text"], input[type="password"], select {
+      width: 160px;
+      padding: 4px 6px;
+      background: #2e2e4a;
+      border: 1px solid #3e3e5e;
+      color: #e0e0e0;
+      border-radius: 4px;
+      font-size: 11px;
     }
+    select { width: 180px; cursor: pointer; }
     .toggle {
-      position: relative; display: inline-block;
-      width: 34px; height: 18px;
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 18px;
     }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .slider {
-      position: absolute; cursor: pointer;
+      position: absolute;
+      cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: #3e3e5e; border-radius: 18px;
+      background: #3e3e5e;
+      border-radius: 18px;
       transition: .2s;
     }
     .slider:before {
-      content: ""; position: absolute;
-      height: 12px; width: 12px; left: 3px; bottom: 3px;
-      background: #aaa; border-radius: 50%; transition: .2s;
+      content: "";
+      position: absolute;
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      bottom: 3px;
+      background: #aaa;
+      border-radius: 50%;
+      transition: .2s;
     }
     input:checked + .slider { background: #6d28d9; }
     input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+    .section-label {
+      font-size: 10px;
+      color: #6c6c9c;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Waldo Tabs</h1>
-    <p>Agentic tab conductor — resource tracking & AI automation</p>
+    <h1>🔷 Waldo Tabs</h1>
+    <p>AI-powered tab manager</p>
   </header>
 
-  <section>
-    <button class="btn primary" id="optimizeAll">Optimize All Inactive Tabs</button>
-    <button class="btn" id="optimizeCurrent">Optimize Current Tab</button>
-    <button class="btn" id="viewCache">View Cached Tabs (<span id="cacheCount">0</span>)</button>
+  <!-- Tab filter controls -->
+  <section class="tab-controls">
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="active">Active</button>
+      <button class="filter-btn" data-filter="discarded">Hibernated</button>
+    </div>
+    <button class="btn primary" id="optimizeAll">Optimize All</button>
+  </section>
+
+  <!-- Ollama setup wizard (shown when Ollama provider selected and not detected) -->
+  <section class="ollama-wizard" id="ollamaWizard" style="display:none">
+    <div class="wizard-card">
+      <div class="wizard-header">🟣 Ollama Setup</div>
+      <p class="wizard-desc">Ollama lets you run AI models locally — free and private.</p>
+      <div id="ollamaStatus"></div>
+      <div id="ollamaModelPicker" style="display:none">
+        <p class="wizard-label">Choose a model:</p>
+        <div class="model-options">
+          <label class="model-option">
+            <input type="radio" name="ollamaModel" value="llama3.2" checked>
+            <span>💬 Llama 3.2 (3B) — fast, good quality</span>
+          </label>
+          <label class="model-option">
+            <input type="radio" name="ollamaModel" value="qwen3">
+            <span>🧠 Qwen 3 (7B) — better reasoning</span>
+          </label>
+          <label class="model-option">
+            <input type="radio" name="ollamaModel" value="phi3">
+            <span>🔬 Phi-3 Mini — very fast, low RAM</span>
+          </label>
+        </div>
+        <p class="model-hint">Run in terminal: <code id="pullCommand">ollama pull llama3.2</code></p>
+        <button class="btn" id="testOllamaBtn">Test Connection</button>
+      </div>
+      <div class="wizard-actions">
+        <a href="https://ollama.com/download" target="_blank" class="btn" id="downloadOllamaBtn">
+          📥 Download Ollama
+        </a>
+        <button class="btn" id="retryOllamaBtn">I installed Ollama — retry</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cached tab list -->
+  <section class="tab-list" id="tabList">
+    <div class="tab-list-empty" id="emptyState">
+      <p>No tabs cached yet.</p>
+      <p class="hint">Click "Optimize All" to hibernate inactive tabs.</p>
+    </div>
   </section>
 
   <div id="status"></div>
 
   <hr>
 
+  <!-- Settings section -->
   <section>
+    <p class="section-label">⚙️ AI Settings</p>
     <div class="settings-row">
-      <label>API Endpoint</label>
-      <input type="text" id="apiEndpoint" placeholder="http://localhost:11434">
+      <label>Provider</label>
+      <select id="provider"><option value="">Select...</option></select>
     </div>
-    <div class="settings-row">
-      <label>API Key</label>
+    <div class="settings-row" id="apiEndpointRow">
+      <label>API Endpoint</label>
+      <input type="text" id="apiEndpoint" placeholder="https://api.openai.com">
+    </div>
+    <div class="settings-row" id="apiKeyRow">
+      <label>API Key / Bearer Token</label>
       <input type="password" id="apiKey" placeholder="(optional)">
     </div>
     <div class="settings-row">

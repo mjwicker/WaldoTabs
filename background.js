@@ -131,12 +131,31 @@ async function prepareForDiscard(tab) {
       quality: 75
     });
 
-    // Extract readable text via content script
-    const textResults = await browser.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => document.body?.innerText?.substring(0, 6000) || ''
-    });
-    const rawText = textResults[0]?.result || '';
+    // Extract readable text via content script (Readability-powered)
+    let rawText = '';
+    try {
+      const extractResult = await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          if (typeof window._waldoTabsQuickExtract === 'function') {
+            return window._waldoTabsQuickExtract(6000);
+          }
+          return document.body?.innerText?.substring(0, 6000) || '';
+        }
+      });
+      rawText = extractResult[0]?.result || '';
+    } catch (err) {
+      console.warn('[WaldoTabs] Readability extraction failed, using innerText:', err);
+      try {
+        const fallback = await browser.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => document.body?.innerText?.substring(0, 6000) || ''
+        });
+        rawText = fallback[0]?.result || '';
+      } catch (_) {
+        rawText = '';
+      }
+    }
 
     // Optionally summarize via API (OpenRouter / local Ollama / Waldo / Google Gemini)
     const settingsData = await browser.storage.local.get('settings');

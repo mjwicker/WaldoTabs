@@ -47,6 +47,24 @@ browser.tabs.onRemoved.addListener(async (tabId) => {
 // ─── Message Handlers ─────────────────────────────────────────────────────────
 
 browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  if (message.action === 'initiateGoogleOAuth') {
+    const result = await initiateGoogleOAuth();
+    sendResponse(result);
+    return true;
+  }
+
+  if (message.action === 'getOAuthStatus') {
+    const status = await getOAuthStatus();
+    sendResponse(status);
+    return true;
+  }
+
+  if (message.action === 'disconnectGoogle') {
+    const result = await disconnectGoogle();
+    sendResponse(result);
+    return true;
+  }
+
   if (message.action === 'optimizeTab') {
     const tab = await browser.tabs.get(message.tabId);
     await prepareForDiscard(tab);
@@ -120,12 +138,22 @@ async function prepareForDiscard(tab) {
     });
     const rawText = textResults[0]?.result || '';
 
-    // Optionally summarize via API (OpenRouter / local Ollama / Waldo endpoint)
+    // Optionally summarize via API (OpenRouter / local Ollama / Waldo / Google Gemini)
     const settingsData = await browser.storage.local.get('settings');
     const settings = settingsData.settings || defaultSettings();
-    const summary = settings.apiEndpoint
-      ? await summarizeViaApi(rawText, settings)
-      : rawText.substring(0, 500); // fallback: first 500 chars
+    let summary;
+    if (settings._provider === 'google') {
+      const token = await getGoogleAccessToken();
+      if (token) {
+        summary = await summarizeViaGoogleGemini(rawText, settings.apiEndpoint, token);
+      } else {
+        summary = rawText.substring(0, 500);
+      }
+    } else {
+      summary = settings.apiEndpoint
+        ? await summarizeViaApi(rawText, settings)
+        : rawText.substring(0, 500); // fallback: first 500 chars
+    }
 
     tabCache.set(tab.id, {
       url: tab.url,
@@ -206,6 +234,146 @@ setInterval(async () => {
     }
   }
 }, 5 * 60 * 1000);
+
+// ─── OAuth Bridge (Google AI / Gemini) ─────────────────────────────────────────
+
+const OAUTH_CONFIG = {
+  google: {
+    authUrl: 'https://accounts.google.com/o/oauth2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    clientId: 'YOUR_GOOGLE_OAUTH_CLIENT_ID', // TODO: Replace with real client ID from Google Cloud Console
+    scopes: 'https://www.googleapis.com/auth/generative-language.retriever',
+  }
+};
+
+function getOAuthRedirectUri() {
+  return browser.identity.getRedirectURL();
+}
+
+async function initiateGoogleOAuth() {
+  const config = OAUTH_CONFIG.google;
+  const redirectUri = getOAuthRedirectUri();
+
+  const authUrl = new URL(config.authUrl);
+  authUrl.searchParams.set('client_id', config.clientId);
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('scope', config.scopes);
+  authUrl.searchParams.set('access_type', 'offline');
+  authUrl.searchParams.set('prompt', 'consent');
+
+  try {
+    const responseUrl = await browser.identity.launchWebAuthFlow({
+      url: authUrl.toString(),
+      interactive: true
+    });
+
+    const params = new URL(responseUrl);
+    const code = params.searchParams.get('code');
+    if (!code) throw new Error('No authorization code returned');
+
+    const tokenData = await exchangeCodeForToken(code, redirectUri);
+
+    await browser.storage.session.set({
+      'oauth_google_access_token': tokenData.access_token,
+      'oauth_google_refresh_token': tokenData.refresh_token,
+      'oauth_google_expiry': Date.now() + (tokenData.expires_in * 1000),
+      'oauth_google_connected': true
+    });
+
+    return { success: true, provider: 'google' };
+  } catch (err) {
+    console.error('[WaldoTabs] Google OAuth failed:', err);
+    return { success: false, error: err.message, provider: 'google' };
+  }
+}
+
+async function exchangeCodeForToken(code, redirectUri) {
+  const config = OAUTH_CONFIG.google;
+  const resp = await fetch(config.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: config.clientId,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code'
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(`Token exchange failed: ${err.error_description || resp.status}`);
+  }
+  return resp.json();
+}
+
+async function getGoogleAccessToken() {
+  const stored = await browser.storage.session.get([
+    'oauth_google_access_token',
+    'oauth_google_refresh_token',
+    'oauth_google_expiry',
+    'oauth_google_connected'
+  ]);
+
+  if (!stored.oauth_google_connected) return null;
+
+  // Refresh if within 5 minutes of expiry
+  const fiveMin = 5 * 60 * 1000;
+  if (stored.oauth_google_expiry - Date.now() < fiveMin) {
+    try {
+      const resp = await fetch(OAUTH_CONFIG.google.tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: OAUTH_CONFIG.google.clientId,
+          refresh_token: stored.oauth_google_refresh_token,
+          grant_type: 'refresh_token'
+        })
+      });
+      const data = await resp.json();
+      await browser.storage.session.set({
+        'oauth_google_access_token': data.access_token,
+        'oauth_google_expiry': Date.now() + (data.expires_in * 1000)
+      });
+      return data.access_token;
+    } catch {
+      return stored.oauth_google_access_token;
+    }
+  }
+  return stored.oauth_google_access_token;
+}
+
+async function getOAuthStatus() {
+  const stored = await browser.storage.session.get('oauth_google_connected');
+  return { google: stored.oauth_google_connected || false };
+}
+
+async function disconnectGoogle() {
+  await browser.storage.session.remove([
+    'oauth_google_access_token',
+    'oauth_google_refresh_token',
+    'oauth_google_expiry',
+    'oauth_google_connected'
+  ]);
+  return { success: true };
+}
+
+async function summarizeViaGoogleGemini(text, apiEndpoint, accessToken) {
+  try {
+    const resp = await fetch(`${apiEndpoint}/v1beta3/models/gemini-2.0-flash:generateContent?key=${accessToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `Summarize this in 1-2 sentences: ${text.substring(0, 3000)}` }] }],
+        generationConfig: { maxOutputTokens: 100 }
+      })
+    });
+    const data = await resp.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || text.substring(0, 500);
+  } catch {
+    return text.substring(0, 500);
+  }
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 // Initial load on first script execution (onStartup may not fire if worker already running)

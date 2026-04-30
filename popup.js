@@ -222,6 +222,7 @@ async function loadSettings() {
     if (oauthStatus.google) {
       const googleOpt = providerSelect.querySelector('option[value="google"]');
       if (googleOpt) googleOpt.textContent = '🔵 Google AI (Gemini) ✅';
+      showGoogleDisconnect();
     }
   }
 
@@ -255,6 +256,36 @@ function applyProviderVisibility(providerId) {
     apiKeyRow.style.display = 'flex';
     endpointInput.readOnly = false;
   }
+
+  // Show/hide Google disconnect link
+  if (providerId !== 'google') {
+    hideGoogleDisconnect();
+  }
+}
+
+function showGoogleDisconnect() {
+  let el = document.getElementById('googleDisconnect');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'googleDisconnect';
+    el.style.cssText = 'margin-top:6px;font-size:10px;color:#6c6c9c;text-align:right;';
+    el.innerHTML = '<span style="color:#aaa">Google AI connected</span> <a href="#" id="googleDisconnectBtn" style="color:#7c3aed;text-decoration:none;">Disconnect</a>';
+    document.getElementById('apiKeyRow').after(el);
+    document.getElementById('googleDisconnectBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await browser.runtime.sendMessage({ action: 'disconnectGoogle' });
+      const googleOpt = document.getElementById('provider').querySelector('option[value="google"]');
+      if (googleOpt) googleOpt.textContent = '🔵 Google AI (Gemini)';
+      hideGoogleDisconnect();
+      setStatus('Google AI disconnected.', '');
+    });
+  }
+  el.style.display = 'block';
+}
+
+function hideGoogleDisconnect() {
+  const el = document.getElementById('googleDisconnect');
+  if (el) el.style.display = 'none';
 }
 
 document.getElementById('provider').addEventListener('change', async (e) => {
@@ -296,6 +327,27 @@ document.getElementById('saveSettings').addEventListener('click', async () => {
   // Test connection after save (skip OAuth providers)
   if (providerId && PROVIDERS[providerId]) {
     await testConnection(providerId, settings);
+  }
+
+  // If Google selected, prompt OAuth if not connected
+  if (providerId === 'google') {
+    const status = await browser.runtime.sendMessage({ action: 'getOAuthStatus' });
+    if (!status.google) {
+      setStatus('Launching Google sign-in...');
+      const result = await browser.runtime.sendMessage({ action: 'initiateGoogleOAuth' });
+      if (result.success) {
+        setStatus('✅ Google AI connected.', 'ok');
+        // Update dropdown label to show connected state
+        const googleOpt = document.getElementById('provider').querySelector('option[value="google"]');
+        if (googleOpt) googleOpt.textContent = '🔵 Google AI (Gemini) ✅';
+        // Show disconnect link
+        showGoogleDisconnect();
+      } else {
+        setStatus('❌ Google OAuth failed: ' + result.error, 'err');
+      }
+    } else {
+      showGoogleDisconnect();
+    }
   }
 });
 

@@ -33,14 +33,15 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 browser.tabs.onActivated.addListener(async ({ tabId }) => {
-  if (tabCache.has(tabId)) {
-    tabCache.get(tabId).lastActive = Date.now();
+  const key = String(tabId);
+  if (tabCache.has(key)) {
+    tabCache.get(key).lastActive = Date.now();
     await persistTabCache();
   }
 });
 
 browser.tabs.onRemoved.addListener(async (tabId) => {
-  tabCache.delete(tabId);
+  tabCache.delete(String(tabId));
   await persistTabCache();
 });
 
@@ -106,12 +107,13 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 // ─── Core Functions ────────────────────────────────────────────────────────────
 
 async function updateTabCache(tabId, tab) {
-  if (tabCache.has(tabId)) {
-    tabCache.get(tabId).url = tab.url;
-    tabCache.get(tabId).title = tab.title;
-    tabCache.get(tabId).lastActive = Date.now();
+  const key = String(tabId);
+  if (tabCache.has(key)) {
+    tabCache.get(key).url = tab.url;
+    tabCache.get(key).title = tab.title;
+    tabCache.get(key).lastActive = Date.now();
   } else {
-    tabCache.set(tabId, {
+    tabCache.set(key, {
       url: tab.url,
       title: tab.title,
       screenshot: null,
@@ -174,12 +176,12 @@ async function prepareForDiscard(tab) {
         : rawText.substring(0, 500); // fallback: first 500 chars
     }
 
-    tabCache.set(tab.id, {
+    tabCache.set(String(tab.id), {
       url: tab.url,
       title: tab.title,
       screenshot,
       summary,
-      lastActive: tabCache.get(tab.id)?.lastActive || Date.now(),
+      lastActive: tabCache.get(String(tab.id))?.lastActive || Date.now(),
       discarded: true
     });
     await persistTabCache(); // v0.2.0: persist after every discard
@@ -218,7 +220,7 @@ async function summarizeViaApi(text, settings) {
 }
 
 function shouldDiscard(tab, settings) {
-  const cached = tabCache.get(tab.id);
+  const cached = tabCache.get(String(tab.id));
   if (!cached) return false;
   const idleMs = (settings.idleMinutes || 30) * 60 * 1000;
   return Date.now() - cached.lastActive > idleMs;

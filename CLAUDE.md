@@ -23,6 +23,23 @@ identity + conventions only.
 - Resource tracking (TODO v0.2.0)
 - Native Msg host (TODO v0.2.0)
 
+## Test Discipline
+
+Every new behavior added in a roadmap task ships with at least one `*.unit.test.js` test.
+CI (GitHub Actions) must be green before marking any task ✅.
+
+- Test runner: `npm test` (Node built-in `node:test`, no external test framework)
+- Harness: `tests/helpers/browserMock.js` + `tests/helpers/loadBackground.js`
+- Naming: `*.smoke.test.js` (syntax/manifest) vs `*.unit.test.js` (behavior)
+- See `tests/README.md` for how to add tests for new features
+
+Key pattern for new tests:
+```js
+const { installBrowserMock } = require('./helpers/browserMock');
+const { loadBackground, sendMessage } = require('./helpers/loadBackground');
+// create fresh mock per test, never share state
+```
+
 ## Commit Convention
 - Format: `vX.Y.Z - Short description`
 - Independent git repo — not part of WaldoAI versioning

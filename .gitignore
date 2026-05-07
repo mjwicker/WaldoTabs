@@ -6,3 +6,5 @@ dist/
 .DS_Store
 *.log
 web-ext-config.js
+waldotabs_data/
+package-lock.json

@@ -25,8 +25,13 @@ test("version is present and semver-like", () => {
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
 });
 
-test("background service_worker is declared", () => {
-  assert.ok(manifest.background?.service_worker, "background.service_worker missing");
+test("background scripts array is declared (Firefox MV3 format)", () => {
+  // Firefox MV3 uses "scripts" array, not "service_worker" (which is Chrome-only MV3).
+  // web-ext lint raises MANIFEST_FIELD_UNSUPPORTED on service_worker — this is the correct format.
+  assert.ok(
+    Array.isArray(manifest.background?.scripts) && manifest.background.scripts.length > 0,
+    "background.scripts must be a non-empty array (Firefox MV3 background format)"
+  );
 });
 
 test("action popup is declared", () => {

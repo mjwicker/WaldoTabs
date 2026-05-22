@@ -102,6 +102,50 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     sendResponse({ cache: Array.from(tabCache.entries()) });
     return true;
   }
+
+  // Ollama detection — popup.js checkOllama() calls this to discover local Ollama
+  // and list available models. Returns { detected: false, models: [] } on any error
+  // so the popup can display a graceful "not found" state without throwing.
+  if (message.action === 'detectOllama') {
+    try {
+      const resp = await fetch('http://localhost:11434/api/tags');
+      if (resp.ok) {
+        const data = await resp.json();
+        const models = (data.models || []).map(m => m.name);
+        sendResponse({ detected: true, models });
+      } else {
+        sendResponse({ detected: false, models: [] });
+      }
+    } catch {
+      sendResponse({ detected: false, models: [] });
+    }
+    return true;
+  }
+
+  // Ollama model validation — popup.js calls this before saving a model selection.
+  // Checks whether the named model is present in Ollama's installed models list.
+  // Matches by exact name or name-without-tag (e.g. 'llama3.2' matches 'llama3.2:latest').
+  if (message.action === 'testOllamaModel') {
+    try {
+      const resp = await fetch('http://localhost:11434/api/tags');
+      if (resp.ok) {
+        const data = await resp.json();
+        const models = (data.models || []).map(m => m.name);
+        const matched = models.some(
+          name => name === message.model || name.startsWith(message.model + ':')
+        );
+        sendResponse(matched
+          ? { ok: true }
+          : { ok: false, error: `Model "${message.model}" not found in Ollama` }
+        );
+      } else {
+        sendResponse({ ok: false, error: 'Ollama not reachable' });
+      }
+    } catch (err) {
+      sendResponse({ ok: false, error: err.message || 'Connection failed' });
+    }
+    return true;
+  }
 });
 
 // ─── Core Functions ────────────────────────────────────────────────────────────

@@ -120,23 +120,29 @@ test('unknown action returns undefined (handler returns nothing)', async () => {
   assert.equal(resp, undefined);
 });
 
-// ── detectOllama / testOllamaModel — gap documentation ───────────────────────
+// ── detectOllama / testOllamaModel — T-TABS-OLLAMA-1 ─────────────────────────
 
-test('detectOllama action is not yet handled by background.js (documents gap)', async () => {
+test('detectOllama returns { detected, models } shape even when Ollama is unreachable', async () => {
   const { browser } = installBrowserMock();
-  loadBackground({ browser });
+  loadBackground({ browser }); // default fetch rejects — simulates no Ollama running
   await new Promise(r => setTimeout(r, 0));
 
   const resp = await sendMessage(browser, { action: 'detectOllama' });
-  // popup.js calls this but background.js has no handler yet — tracked in roadmap task 1.4
-  assert.equal(resp, undefined, 'detectOllama handler not yet implemented (Phase 1.4)');
+  assert.ok(resp !== undefined, 'detectOllama must call sendResponse (handler is now implemented)');
+  assert.strictEqual(typeof resp.detected, 'boolean', 'resp.detected must be boolean');
+  assert.ok(Array.isArray(resp.models), 'resp.models must be an array');
+  assert.strictEqual(resp.detected, false, 'detected=false when fetch rejects');
+  assert.strictEqual(resp.models.length, 0, 'models is empty when fetch rejects');
 });
 
-test('testOllamaModel action is not yet handled by background.js (documents gap)', async () => {
+test('testOllamaModel returns { ok } shape even when Ollama is unreachable', async () => {
   const { browser } = installBrowserMock();
-  loadBackground({ browser });
+  loadBackground({ browser }); // default fetch rejects — simulates no Ollama running
   await new Promise(r => setTimeout(r, 0));
 
   const resp = await sendMessage(browser, { action: 'testOllamaModel', model: 'llama3.2' });
-  assert.equal(resp, undefined, 'testOllamaModel handler not yet implemented (Phase 1.4)');
+  assert.ok(resp !== undefined, 'testOllamaModel must call sendResponse (handler is now implemented)');
+  assert.strictEqual(typeof resp.ok, 'boolean', 'resp.ok must be boolean');
+  assert.strictEqual(resp.ok, false, 'ok=false when fetch rejects');
+  assert.ok(typeof resp.error === 'string', 'resp.error must be a string when ok=false');
 });

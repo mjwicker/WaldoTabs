@@ -3,6 +3,13 @@
 
 let tabCache = new Map();
 
+function isGoogleDomain(url) {
+  try {
+    const host = new URL(url).hostname;
+    return host === 'google.com' || host.endsWith('.google.com');
+  } catch { return false; }
+}
+
 // ─── Cache Persistence ───────────────────────────────────────────────────────
 
 // Load tabCache from storage on startup. Called on every worker wake.
@@ -68,6 +75,10 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
   if (message.action === 'optimizeTab') {
     const tab = await browser.tabs.get(message.tabId);
+    if (isGoogleDomain(tab.url)) {
+      sendResponse({ success: true, skipped: 'google-domain' });
+      return true;
+    }
     await prepareForDiscard(tab);
     sendResponse({ success: true });
     return true;

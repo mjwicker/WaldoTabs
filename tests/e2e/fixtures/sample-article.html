@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Waldo Tabs E2E Fixture — Sample Article</title>
+</head>
+<body>
+  <article>
+    <h1>Sample Article for Content Extraction Test</h1>
+    <p>
+      This is a sufficiently long paragraph of body text used to exercise the
+      WaldoTabs content extraction pipeline. The <code>_waldoTabsExtract</code>
+      function should return this text after the content script injects into the page.
+    </p>
+    <p>
+      A second paragraph ensures the innerText fallback path also finds multiple
+      lines that each exceed the 20-character minimum required by the filter.
+    </p>
+  </article>
+</body>
+</html>

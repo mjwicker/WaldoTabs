@@ -20,7 +20,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "waldo-tabs@waldo.local",
-      "strict_min_version": "78.0"
+      "strict_min_version": "102"
     }
   },
   "background": {

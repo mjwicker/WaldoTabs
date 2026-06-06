@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waldo Tabs — Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    a { color: #818cf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ── */
+    .page { max-width: 720px; margin: 0 auto; padding: 32px 20px 60px; }
+    .page-header { margin-bottom: 32px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: #7c3aed; }
+    .page-header p { font-size: 13px; color: #888; margin-top: 4px; }
+
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: 1px;
+      color: #6c6c9c; text-transform: uppercase; margin-bottom: 12px;
+    }
+
+    /* ── Provider cards ── */
+    .provider-card {
+      background: #1a1a2e;
+      border: 1px solid #2e2e4a;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .provider-card.featured { border-color: #5b21b6; }
+    .provider-card.active-provider { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed22; }
+
+    .card-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+    }
+    .card-header:hover { background: #1e1e36; }
+    .card-icon { font-size: 20px; flex-shrink: 0; }
+    .card-title-group { flex: 1; }
+    .card-name { font-size: 14px; font-weight: 600; }
+    .card-tagline { font-size: 11px; color: #888; margin-top: 2px; }
+    .card-status { font-size: 11px; }
+    .card-status.connected { color: #6ee7b7; }
+    .card-status.error { color: #f87171; }
+    .card-chevron { font-size: 12px; color: #555; transition: transform 0.15s; }
+    .provider-card.expanded .card-chevron { transform: rotate(180deg); }
+
+    .card-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid #2e2e4a;
+    }
+    .provider-card.expanded .card-body { display: block; }
+
+    /* ── Form rows ── */
+    .form-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; gap: 12px;
+    }
+    .form-row label { font-size: 12px; color: #aaa; flex-shrink: 0; min-width: 120px; }
+    .form-row input[type="text"],
+    .form-row input[type="password"],
+    .form-row select {
+      flex: 1;
+      padding: 6px 8px;
+      background: #2e2e4a;
+      border: 1px solid #3e3e5e;
+      color: #e0e0e0;
+      border-radius: 5px;
+      font-size: 12px;
+      min-width: 0;
+    }
+    .form-row input:focus, .form-row select:focus {
+      outline: none; border-color: #7c3aed;
+    }
+    .form-row input[readonly] { color: #666; background: #161624; }
+
+    /* ── Ollama wizard ── */
+    .ollama-detect {
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: #161624;
+    }
+    .ollama-detect.ok { background: #064e3b22; color: #6ee7b7; border: 1px solid #065f46; }
+    .ollama-detect.err { background: #450a0a22; color: #f87171; border: 1px solid #7f1d1d; }
+    .model-options { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+    .model-option {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; cursor: pointer;
+    }
+    .model-option input { accent-color: #7c3aed; }
+    .pull-hint {
+      font-size: 11px; color: #6c6c9c; margin-top: 6px;
+    }
+    .pull-hint code {
+      background: #2e2e4a; padding: 1px 5px; border-radius: 3px; color: #a855f7;
+    }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .btn {
+      padding: 7px 14px;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid #3e3e5e;
+      background: #2e2e4a;
+      color: #e0e0e0;
+    }
+    .btn:hover { background: #3e3e5e; }
+    .btn.primary {
+      background: #4f46e5; border-color: #818cf8; color: #fff;
+    }
+    .btn.primary:hover { background: #6366f1; }
+    .btn.danger { border-color: #7f1d1d; color: #f87171; }
+    .btn.danger:hover { background: #450a0a; }
+
+    /* ── Status message ── */
+    #globalStatus {
+      font-size: 12px; color: #888;
+      padding: 10px 0; min-height: 24px;
+    }
+    #globalStatus.ok { color: #6ee7b7; }
+    #globalStatus.err { color: #f87171; }
+
+    /* ── Behaviour section ── */
+    .toggle {
+      position: relative; display: inline-block; width: 34px; height: 18px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #3e3e5e; border-radius: 18px; transition: .2s;
+    }
+    .slider:before {
+      content: ""; position: absolute;
+      height: 12px; width: 12px; left: 3px; bottom: 3px;
+      background: #aaa; border-radius: 50%; transition: .2s;
+    }
+    input:checked + .slider { background: #6d28d9; }
+    input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <h1>🔷 Waldo Tabs — Settings</h1>
+      <p>Configure your AI provider and tab behaviour.</p>
+    </div>
+
+    <!-- ── Featured providers ── -->
+    <div class="section">
+      <div class="section-title">⚡ Quick Start</div>
+
+      <!-- OpenRouter -->
+      <div class="provider-card featured" id="card-openrouter">
+        <div class="card-header">
+          <span class="card-icon">🟠</span>
+          <div class="card-title-group">
+            <div class="card-name">OpenRouter</div>
+            <div class="card-tagline">One key · 200+ models · pay per use — best cloud starting point</div>
+          </div>
+          <span class="card-status" id="status-openrouter"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>API Key</label>
+            <input type="password" id="key-openrouter" placeholder="sk-or-…">
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="model-openrouter" value="meta-llama/llama-3.1-8b-instruct:free">
+          </div>
+          <p style="font-size:11px;color:#888;margin-top:4px">
+            Get a key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>.
+            Free-tier models available.
+          </p>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="openrouter">Use OpenRouter</button>
+            <button class="btn" data-action="test" data-provider="openrouter">Test Connection</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ollama -->
+      <div class="provider-card featured" id="card-ollama">
+        <div class="card-header">
+          <span class="card-icon">🟣</span>
+          <div class="card-title-group">
+            <div class="card-name">Ollama (Local)</div>
+            <div class="card-tagline">Free · private · runs on your machine — no account needed</div>
+          </div>
+          <span class="card-status" id="status-ollama"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>Endpoint</label>
+            <input type="text" id="endpoint-ollama" value="http://localhost:11434" readonly>
+          </div>
+          <div id="ollamaDetect" class="ollama-detect">Checking for Ollama…</div>
+          <div id="ollamaModelSection" style="display:none">
+            <p style="font-size:12px;color:#aaa;margin:8px 0 4px">Choose a model:</p>
+            <div class="model-options">
+              <label class="model-option">
+                <input type="radio" name="ollamaModel" value="llama3.2" checked>
+                <span>💬 Llama 3.2 (3B) — fast, good quality</span>
+              </label>
+              <label class="model-option">
+                <input type="radio" name="ollamaModel" value="qwen3">
+                <span>🧠 Qwen 3 (7B) — better reasoning</span>
+              </label>
+              <label class="model-option">
+                <input type="radio" name="ollamaModel" value="phi3">
+                <span>🔬 Phi-3 Mini — very fast, low RAM</span>
+              </label>
+            </div>
+            <p class="pull-hint">Run in terminal: <code id="pullCommand">ollama pull llama3.2</code></p>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="ollama">Use Ollama</button>
+            <button class="btn" id="retryOllamaBtn">↺ Retry detect</button>
+            <a href="https://ollama.com/download" target="_blank" class="btn" id="downloadOllamaBtn" style="display:none">
+              📥 Download Ollama
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── More providers ── -->
+    <div class="section">
+      <div class="section-title">☁️ More Providers</div>
+
+      <!-- Google Gemini -->
+      <div class="provider-card" id="card-google">
+        <div class="card-header">
+          <span class="card-icon">🔵</span>
+          <div class="card-title-group">
+            <div class="card-name">Google AI (Gemini)</div>
+            <div class="card-tagline">OAuth sign-in · free tier available</div>
+          </div>
+          <span class="card-status" id="status-google"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="model-google" value="gemini-2.0-flash">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="google">Use Google AI</button>
+            <button class="btn" id="googleConnectBtn">Connect Google account →</button>
+            <button class="btn danger" id="googleDisconnectBtn" style="display:none">Disconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OpenAI -->
+      <div class="provider-card" id="card-openai">
+        <div class="card-header">
+          <span class="card-icon">🟢</span>
+          <div class="card-title-group">
+            <div class="card-name">OpenAI</div>
+            <div class="card-tagline">API key · GPT-4o and more</div>
+          </div>
+          <span class="card-status" id="status-openai"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>API Key</label>
+            <input type="password" id="key-openai" placeholder="sk-…">
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="model-openai" value="gpt-4o-mini">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="openai">Use OpenAI</button>
+            <button class="btn" data-action="test" data-provider="openai">Test Connection</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anthropic -->
+      <div class="provider-card" id="card-anthropic">
+        <div class="card-header">
+          <span class="card-icon">🟡</span>
+          <div class="card-title-group">
+            <div class="card-name">Anthropic (Claude)</div>
+            <div class="card-tagline">API key · Claude Haiku / Sonnet</div>
+          </div>
+          <span class="card-status" id="status-anthropic"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>API Key</label>
+            <input type="password" id="key-anthropic" placeholder="sk-ant-…">
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="model-anthropic" value="claude-haiku-4-5-20251001">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="anthropic">Use Anthropic</button>
+            <button class="btn" data-action="test" data-provider="anthropic">Test Connection</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mistral -->
+      <div class="provider-card" id="card-mistral">
+        <div class="card-header">
+          <span class="card-icon">🔴</span>
+          <div class="card-title-group">
+            <div class="card-name">Mistral</div>
+            <div class="card-tagline">API key · open-weight models</div>
+          </div>
+          <span class="card-status" id="status-mistral"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>API Key</label>
+            <input type="password" id="key-mistral" placeholder="…">
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="model-mistral" value="mistral-small-latest">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="mistral">Use Mistral</button>
+            <button class="btn" data-action="test" data-provider="mistral">Test Connection</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom endpoint -->
+      <div class="provider-card" id="card-custom">
+        <div class="card-header">
+          <span class="card-icon">⚙️</span>
+          <div class="card-title-group">
+            <div class="card-name">Custom Endpoint</div>
+            <div class="card-tagline">Any OpenAI-compatible API — WaldoAI, llama.cpp server, etc.</div>
+          </div>
+          <span class="card-status" id="status-custom"></span>
+          <span class="card-chevron">▼</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>Base URL</label>
+            <input type="text" id="endpoint-custom" placeholder="http://localhost:8080">
+          </div>
+          <div class="form-row">
+            <label>API Key</label>
+            <input type="password" id="key-custom" placeholder="(optional)">
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="model-custom" placeholder="model-name">
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" data-action="select" data-provider="custom">Use Custom</button>
+            <button class="btn" data-action="test" data-provider="custom">Test Connection</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Behaviour ── -->
+    <div class="section">
+      <div class="section-title">🔧 Tab Behaviour</div>
+      <div class="provider-card">
+        <div style="padding: 14px 16px;">
+          <div class="form-row">
+            <label>Idle threshold (min)</label>
+            <input type="text" id="idleMinutes" value="30" style="max-width:70px;flex:unset">
+          </div>
+          <div class="form-row">
+            <label>Auto-optimize</label>
+            <label class="toggle">
+              <input type="checkbox" id="autoOptimize">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="globalStatus"></div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

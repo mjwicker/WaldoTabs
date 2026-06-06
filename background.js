@@ -114,7 +114,74 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     return true;
   }
 
-  // Ollama detection — popup.js checkOllama() calls this to discover local Ollama
+  // ── Chat — general conversation + page Q&A ──────────────────────────────────
+  // sidebar.js sends { action: 'chat', messages: [...] }
+  // messages is a full conversation history; sidebar prepends page context when toggled.
+  if (message.action === 'chat') {
+    try {
+      const content = await callWithSavedSettings(message.messages, { maxTokens: 1000 });
+      sendResponse({ content });
+    } catch (err) {
+      sendResponse({ error: err.message });
+    }
+    return true;
+  }
+
+  // ── getPageContext — extract readable text from the active tab ───────────────
+  // Returns { title, url, content } so sidebar can prepend it as context.
+  if (message.action === 'getPageContext') {
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) { sendResponse({ error: 'No active tab' }); return true; }
+
+      const result = await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          if (typeof window._waldoTabsQuickExtract === 'function') {
+            return window._waldoTabsQuickExtract(6000);
+          }
+          return document.body?.innerText?.substring(0, 6000) || '';
+        }
+      });
+      sendResponse({
+        title:   tab.title || '',
+        url:     tab.url   || '',
+        content: result[0]?.result || ''
+      });
+    } catch (err) {
+      sendResponse({ error: err.message });
+    }
+    return true;
+  }
+
+  // ── pageAction — execute a single primitive on the active tab ────────────────
+  // sidebar.js sends { action: 'pageAction', tool, args } after user approves.
+  // Supported tools: list_interactive | click | fill | scroll
+  if (message.action === 'pageAction') {
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) { sendResponse({ error: 'No active tab' }); return true; }
+
+      const { tool, args } = message;
+      const result = await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (t, a) => {
+          // All primitives are defined in content.js via window._waldoTabsAction
+          if (typeof window._waldoTabsAction !== 'function') {
+            return { error: 'Content script not loaded. Try refreshing the page.' };
+          }
+          return window._waldoTabsAction(t, a);
+        },
+        args: [tool, args || {}]
+      });
+      sendResponse(result[0]?.result || { error: 'No result' });
+    } catch (err) {
+      sendResponse({ error: err.message });
+    }
+    return true;
+  }
+
+  // Ollama detection — popup.js / options.js call this to discover local Ollama
   // and list available models. Returns { detected: false, models: [] } on any error
   // so the popup can display a graceful "not found" state without throwing.
   if (message.action === 'detectOllama') {
@@ -221,7 +288,11 @@ async function prepareForDiscard(tab) {
     if (settings._provider === 'google') {
       const token = await getGoogleAccessToken();
       if (token) {
-        summary = await summarizeViaGoogleGemini(rawText, settings.apiEndpoint, token);
+        try {
+          summary = await callModelGemini([
+            { role: 'user', content: `Summarize this webpage in 1-2 sentences: ${rawText.substring(0, 3000)}` }
+          ], settings, token);
+        } catch { summary = rawText.substring(0, 500); }
       } else {
         summary = rawText.substring(0, 500);
       }
@@ -249,26 +320,74 @@ async function prepareForDiscard(tab) {
   }
 }
 
-async function summarizeViaApi(text, settings) {
-  // OpenAI-compatible endpoint — works with OpenRouter, Ollama, or Waldo /v1/chat/completions
-  try {
-    const resp = await fetch(`${settings.apiEndpoint}/v1/chat/completions`, {
+// ─── Unified model caller ─────────────────────────────────────────────────────
+
+// OpenAI-compatible — works with OpenRouter, Ollama, llama.cpp, WaldoAI, OpenAI, etc.
+async function callModel(messages, settings, { maxTokens = 500 } = {}) {
+  const resp = await fetch(`${settings.apiEndpoint}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(settings.apiKey ? { 'Authorization': `Bearer ${settings.apiKey}` } : {})
+    },
+    body: JSON.stringify({
+      model: settings.model || 'gpt-4o-mini',
+      messages,
+      max_tokens: maxTokens
+    })
+  });
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const data = await resp.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Empty response from model');
+  return content;
+}
+
+// Google Gemini — separate path (different auth + endpoint shape)
+async function callModelGemini(messages, settings, accessToken) {
+  const userContent = messages.filter(m => m.role !== 'system').map(m => m.content).join('\n');
+  const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+  const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${userContent}` : userContent;
+
+  const resp = await fetch(
+    `${settings.apiEndpoint}/v1beta3/models/${settings.model || 'gemini-2.0-flash'}:generateContent?key=${accessToken}`,
+    {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(settings.apiKey ? { 'Authorization': `Bearer ${settings.apiKey}` } : {})
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: settings.model || 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Summarize this webpage content in 1-2 sentences.' },
-          { role: 'user', content: text.substring(0, 4000) }
-        ],
-        max_tokens: 100
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        generationConfig: { maxOutputTokens: 500 }
       })
-    });
-    const data = await resp.json();
-    return data.choices?.[0]?.message?.content || text.substring(0, 500);
+    }
+  );
+  if (!resp.ok) throw new Error(`Gemini error ${resp.status}`);
+  const data = await resp.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) throw new Error('Empty Gemini response');
+  return content;
+}
+
+// Dispatch to the right caller based on saved settings
+async function callWithSavedSettings(messages, opts = {}) {
+  const settingsData = await browser.storage.local.get('settings');
+  const settings = settingsData.settings || defaultSettings();
+  if (!settings.apiEndpoint) throw new Error('No AI provider configured. Open Settings to set one up.');
+
+  if (settings._provider === 'google') {
+    const token = await getGoogleAccessToken();
+    if (!token) throw new Error('Google not connected. Open Settings and connect your Google account.');
+    return callModelGemini(messages, settings, token);
+  }
+  return callModel(messages, settings, opts);
+}
+
+async function summarizeViaApi(text, settings) {
+  // Thin wrapper — delegates to callModel so summarisation stays in sync
+  try {
+    return await callModel([
+      { role: 'system', content: 'Summarize this webpage content in 1-2 sentences.' },
+      { role: 'user',   content: text.substring(0, 4000) }
+    ], settings, { maxTokens: 100 });
   } catch {
     return text.substring(0, 500);
   }

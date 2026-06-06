@@ -94,31 +94,19 @@ if (jsdom) {
   const { JSDOM } = jsdom;
 
   function makePopupDOM() {
+    // v0.3.0 hub layout — matches popup.html structure
     return new JSDOM(`<!DOCTYPE html>
       <html><body>
         <div id="status"></div>
+        <span id="providerBadge" class="provider-badge">No AI</span>
+        <button id="openChat">Open Chat</button>
+        <button id="openSettings">Settings</button>
+        <button id="optimizeAll">Optimize All</button>
         <div id="tabList"></div>
         <div id="emptyState" style="display:none">No tabs</div>
         <div class="filter-btn" data-filter="all"></div>
         <div class="filter-btn" data-filter="active"></div>
         <div class="filter-btn" data-filter="discarded"></div>
-        <button id="optimizeAll"></button>
-        <select id="provider"></select>
-        <input id="apiEndpoint" />
-        <input id="apiKey" />
-        <input id="model" />
-        <input id="idleMinutes" />
-        <input id="autoOptimize" type="checkbox" />
-        <button id="saveSettings"></button>
-        <div id="apiEndpointRow"></div>
-        <div id="apiKeyRow"></div>
-        <div id="ollamaWizard"></div>
-        <div id="ollamaStatus"></div>
-        <div id="ollamaModelPicker"></div>
-        <code id="pullCommand"></code>
-        <button id="downloadOllamaBtn"></button>
-        <button id="retryOllamaBtn"></button>
-        <button id="testOllamaBtn"></button>
       </body></html>`,
       { url: 'http://localhost' }
     );
@@ -137,15 +125,18 @@ if (jsdom) {
         sendMessage: async (msg) => {
           if (msg.action === 'loadPersistedCache') return { cache: cacheEntries };
           if (msg.action === 'getSettings') return { idleMinutes: 30, autoOptimize: false };
-          if (msg.action === 'getOAuthStatus') return { google: false };
-          if (msg.action === 'detectOllama') return { status: 'not_found' };
           return {};
-        }
+        },
+        getURL: (path) => `moz-extension://fake-id/${path}`
       },
       tabs: {
         update: async () => {},
-        query: async () => [],
-        reload: async () => {}
+        query:  async () => [],
+        reload: async () => {},
+        create: async () => {}
+      },
+      sidebarAction: {
+        open: async () => {}
       }
     };
   }

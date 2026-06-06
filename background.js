@@ -349,11 +349,15 @@ async function callModelGemini(messages, settings, accessToken) {
   const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
   const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${userContent}` : userContent;
 
+  const model = encodeURIComponent(settings.model || 'gemini-2.0-flash');
   const resp = await fetch(
-    `${settings.apiEndpoint}/v1beta3/models/${settings.model || 'gemini-2.0-flash'}:generateContent?key=${accessToken}`,
+    `${settings.apiEndpoint}/v1beta3/models/${model}:generateContent`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`  // OAuth token in header, never in URL
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: fullPrompt }] }],
         generationConfig: { maxOutputTokens: 500 }

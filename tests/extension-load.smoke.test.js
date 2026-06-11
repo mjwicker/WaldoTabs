@@ -55,3 +55,22 @@ test("background.js parses without syntax errors", () => {
     "background.js contains syntax errors"
   );
 });
+
+test("manifest.json strict_min_version is 112.0 for Firefox storage.session API support", () => {
+  const content = fs.readFileSync(MANIFEST_PATH, "utf8");
+  const manifest = JSON.parse(content);
+
+  assert.ok(
+    manifest.browser_specific_settings &&
+      manifest.browser_specific_settings.gecko &&
+      manifest.browser_specific_settings.gecko.strict_min_version,
+    "Missing browser_specific_settings.gecko.strict_min_version"
+  );
+
+  const minVersion = manifest.browser_specific_settings.gecko.strict_min_version;
+  assert.strictEqual(
+    minVersion,
+    "112.0",
+    `Expected strict_min_version "112.0" (Firefox 112+ for storage.session API), got "${minVersion}"`
+  );
+});

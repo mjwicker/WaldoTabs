@@ -152,6 +152,13 @@
     }
     input:checked + .slider { background: #6d28d9; }
     input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+
+    /* ── Inline element class overrides ── */
+    .page-header-note { font-size: 11px; color: #888; margin-top: 4px; }
+    .form-hint { font-size: 12px; color: #aaa; margin: 8px 0 4px; }
+    .hidden { display: none; }
+    .inline-input { max-width: 70px; flex: unset; }
+    .behaviour-card-body { padding: 14px 16px; }
   </style>
 </head>
 <body>
@@ -185,7 +192,7 @@
             <label>Model</label>
             <input type="text" id="model-openrouter" value="meta-llama/llama-3.1-8b-instruct:free">
           </div>
-          <p style="font-size:11px;color:#888;margin-top:4px">
+          <p class="page-header-note">
             Get a key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>.
             Free-tier models available.
           </p>
@@ -213,8 +220,8 @@
             <input type="text" id="endpoint-ollama" value="http://localhost:11434" readonly>
           </div>
           <div id="ollamaDetect" class="ollama-detect">Checking for Ollama…</div>
-          <div id="ollamaModelSection" style="display:none">
-            <p style="font-size:12px;color:#aaa;margin:8px 0 4px">Choose a model:</p>
+          <div id="ollamaModelSection" class="hidden">
+            <p class="form-hint">Choose a model:</p>
             <div class="model-options">
               <label class="model-option">
                 <input type="radio" name="ollamaModel" value="llama3.2" checked>
@@ -234,7 +241,7 @@
           <div class="btn-row">
             <button class="btn primary" data-action="select" data-provider="ollama">Use Ollama</button>
             <button class="btn" id="retryOllamaBtn">↺ Retry detect</button>
-            <a href="https://ollama.com/download" target="_blank" class="btn" id="downloadOllamaBtn" style="display:none">
+            <a href="https://ollama.com/download" target="_blank" class="btn hidden" id="downloadOllamaBtn">
               📥 Download Ollama
             </a>
           </div>
@@ -265,7 +272,7 @@
           <div class="btn-row">
             <button class="btn primary" data-action="select" data-provider="google">Use Google AI</button>
             <button class="btn" id="googleConnectBtn">Connect Google account →</button>
-            <button class="btn danger" id="googleDisconnectBtn" style="display:none">Disconnect</button>
+            <button class="btn danger hidden" id="googleDisconnectBtn">Disconnect</button>
           </div>
         </div>
       </div>
@@ -387,10 +394,10 @@
     <div class="section">
       <div class="section-title">🔧 Tab Behaviour</div>
       <div class="provider-card">
-        <div style="padding: 14px 16px;">
+        <div class="behaviour-card-body">
           <div class="form-row">
             <label>Idle threshold (min)</label>
-            <input type="text" id="idleMinutes" value="30" style="max-width:70px;flex:unset">
+            <input type="text" id="idleMinutes" value="30" class="inline-input">
           </div>
           <div class="form-row">
             <label>Auto-optimize</label>

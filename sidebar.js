@@ -1,6 +1,19 @@
 // sidebar.js — chat + page Q&A + approval-gated single-page actions
 'use strict';
 
+// ─── Browser-compatible logger (mirrors WaldoTabsLogger API from logging_utils.js) ─
+class WaldoTabsLogger {
+  constructor(name) {
+    this._prefix = `[WaldoTabs:${name}]`;
+  }
+  debug(msg, ...args) { console.debug(this._prefix, msg, ...args); }
+  info(msg, ...args)  { console.log(this._prefix, msg, ...args); }
+  warn(msg, ...args)  { console.warn(this._prefix, msg, ...args); }
+  error(msg, ...args) { console.error(this._prefix, msg, ...args); }
+}
+
+const logger = new WaldoTabsLogger('sidebar');
+
 const ACTION_HARD_CAP = 8; // max tool calls per turn
 
 const transcript = document.getElementById('transcript');
@@ -130,7 +143,9 @@ function extractToolCall(text) {
   try {
     const parsed = JSON.parse(jsonStr);
     if (parsed && typeof parsed.tool === 'string') return parsed;
-  } catch { /* not a valid tool call */ }
+  } catch (err) {
+    logger.warn('extractToolCall: fenced JSON block is not a valid tool call', err);
+  }
   return null;
 }
 
@@ -259,6 +274,7 @@ async function sendMessage() {
       thinking.remove === t2.remove ? null : t2; // keep reference
     }
   } catch (err) {
+    logger.error('sendMessage: unexpected error in agentic loop', err);
     thinking.remove();
     addMsg('error', `Unexpected error: ${err.message}`);
   }

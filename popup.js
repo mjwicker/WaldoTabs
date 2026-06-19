@@ -1,6 +1,19 @@
 // popup.js — hub: tab manager + Chat / Settings launchers
 'use strict';
 
+// ─── Browser-compatible logger (mirrors WaldoTabsLogger API from logging_utils.js) ─
+class WaldoTabsLogger {
+  constructor(name) {
+    this._prefix = `[WaldoTabs:${name}]`;
+  }
+  debug(msg, ...args) { console.debug(this._prefix, msg, ...args); }
+  info(msg, ...args)  { console.log(this._prefix, msg, ...args); }
+  warn(msg, ...args)  { console.warn(this._prefix, msg, ...args); }
+  error(msg, ...args) { console.error(this._prefix, msg, ...args); }
+}
+
+const logger = new WaldoTabsLogger('popup');
+
 const status = document.getElementById('status');
 const tabList = document.getElementById('tabList');
 const emptyState = document.getElementById('emptyState');
@@ -16,7 +29,10 @@ function setStatus(msg, type = '') {
 }
 
 function domainFromUrl(url) {
-  try { return new URL(url).hostname; } catch { return url; }
+  try { return new URL(url).hostname; } catch (err) {
+    logger.warn('domainFromUrl: invalid URL', url, err);
+    return url;
+  }
 }
 
 function timeAgo(ms) {

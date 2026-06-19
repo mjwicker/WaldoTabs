@@ -1,13 +1,31 @@
 // background.js — service worker (brain of the extension)
 // v0.2.0: tabCache persisted to browser.storage.local (survives worker suspension)
 
+// ─── Browser-compatible logger (mirrors WaldoTabsLogger API from logging_utils.js) ─
+// logging_utils.js uses Node fs/path and cannot run in the extension service worker.
+// This inline class provides the same interface backed by console methods.
+class WaldoTabsLogger {
+  constructor(name) {
+    this._prefix = `[WaldoTabs:${name}]`;
+  }
+  debug(msg, ...args) { console.debug(this._prefix, msg, ...args); }
+  info(msg, ...args)  { console.log(this._prefix, msg, ...args); }
+  warn(msg, ...args)  { console.warn(this._prefix, msg, ...args); }
+  error(msg, ...args) { console.error(this._prefix, msg, ...args); }
+}
+
+const logger = new WaldoTabsLogger('background');
+
 let tabCache = new Map();
 
 function isGoogleDomain(url) {
   try {
     const host = new URL(url).hostname;
     return host === 'google.com' || host.endsWith('.google.com');
-  } catch { return false; }
+  } catch (err) {
+    logger.warn('isGoogleDomain: invalid URL', url, err);
+    return false;
+  }
 }
 
 // ─── Cache Persistence ───────────────────────────────────────────────────────
@@ -194,7 +212,8 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       } else {
         sendResponse({ detected: false, models: [] });
       }
-    } catch {
+    } catch (err) {
+      logger.warn('detectOllama: Ollama not reachable', err);
       sendResponse({ detected: false, models: [] });
     }
     return true;
@@ -276,7 +295,8 @@ async function prepareForDiscard(tab) {
           func: () => document.body?.innerText?.substring(0, 6000) || ''
         });
         rawText = fallback[0]?.result || '';
-      } catch (_) {
+      } catch (innerErr) {
+        logger.error('prepareForDiscard: innerText fallback also failed for tab', tab.title, innerErr);
         rawText = '';
       }
     }
@@ -292,7 +312,10 @@ async function prepareForDiscard(tab) {
           summary = await callModelGemini([
             { role: 'user', content: `Summarize this webpage in 1-2 sentences: ${rawText.substring(0, 3000)}` }
           ], settings, token);
-        } catch { summary = rawText.substring(0, 500); }
+        } catch (err) {
+          logger.error('prepareForDiscard: Gemini summarization failed for tab', tab.title, err);
+          summary = rawText.substring(0, 500);
+        }
       } else {
         summary = rawText.substring(0, 500);
       }
@@ -392,7 +415,8 @@ async function summarizeViaApi(text, settings) {
       { role: 'system', content: 'Summarize this webpage content in 1-2 sentences.' },
       { role: 'user',   content: text.substring(0, 4000) }
     ], settings, { maxTokens: 100 });
-  } catch {
+  } catch (err) {
+    logger.error('summarizeViaApi: API summarization failed', err);
     return text.substring(0, 500);
   }
 }
@@ -535,7 +559,8 @@ async function getGoogleAccessToken() {
         'oauth_google_expiry': Date.now() + (data.expires_in * 1000)
       });
       return data.access_token;
-    } catch {
+    } catch (err) {
+      logger.error('getGoogleAccessToken: token refresh failed, using cached token', err);
       return stored.oauth_google_access_token;
     }
   }
@@ -569,7 +594,8 @@ async function summarizeViaGoogleGemini(text, apiEndpoint, accessToken) {
     });
     const data = await resp.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || text.substring(0, 500);
-  } catch {
+  } catch (err) {
+    logger.error('summarizeViaGoogleGemini: Gemini fetch failed', err);
     return text.substring(0, 500);
   }
 }

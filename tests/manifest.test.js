@@ -48,3 +48,53 @@ test("browser_specific_settings gecko id is present", () => {
 test("permissions is a non-empty array", () => {
   assert.ok(Array.isArray(manifest.permissions) && manifest.permissions.length > 0);
 });
+
+test("data_collection_permissions key is present", () => {
+  assert.ok(
+    manifest.data_collection_permissions,
+    "data_collection_permissions missing (required for AMO publish)"
+  );
+});
+
+test("data_collection_permissions.required is present and is an array", () => {
+  assert.ok(
+    Array.isArray(manifest.data_collection_permissions?.required),
+    "data_collection_permissions.required must be an array"
+  );
+});
+
+test("gecko_android strict_min_version is defined", () => {
+  assert.ok(
+    manifest.browser_specific_settings?.gecko_android?.strict_min_version,
+    "gecko_android.strict_min_version missing (required to separate Android from Desktop Firefox)"
+  );
+});
+
+test("gecko_android version is at least 133.0 (storage.session API support)", () => {
+  const androidVersion = manifest.browser_specific_settings?.gecko_android?.strict_min_version;
+  const parts = androidVersion.split(".").map(Number);
+  assert.ok(
+    parts[0] >= 133,
+    `gecko_android.strict_min_version should be >= 133.0 for storage.session API support, got ${androidVersion}`
+  );
+});
+
+test("gecko Desktop version (strict_min_version) is at least 112.0", () => {
+  const desktopVersion = manifest.browser_specific_settings?.gecko?.strict_min_version;
+  const parts = desktopVersion.split(".").map(Number);
+  assert.ok(
+    parts[0] >= 112,
+    `gecko.strict_min_version should be >= 112.0, got ${desktopVersion}`
+  );
+});
+
+test("gecko_android version is higher than Desktop gecko version (Android minimum should be later)", () => {
+  const desktopVersion = manifest.browser_specific_settings?.gecko?.strict_min_version;
+  const androidVersion = manifest.browser_specific_settings?.gecko_android?.strict_min_version;
+  const desktopParts = desktopVersion.split(".").map(Number);
+  const androidParts = androidVersion.split(".").map(Number);
+  assert.ok(
+    androidParts[0] >= desktopParts[0],
+    `gecko_android version (${androidVersion}) should be >= Desktop gecko version (${desktopVersion})`
+  );
+});

@@ -49,17 +49,17 @@ test("permissions is a non-empty array", () => {
   assert.ok(Array.isArray(manifest.permissions) && manifest.permissions.length > 0);
 });
 
-test("data_collection_permissions key is present", () => {
+test("data_collection_permissions key is present under browser_specific_settings.gecko", () => {
   assert.ok(
-    manifest.data_collection_permissions,
-    "data_collection_permissions missing (required for AMO publish)"
+    manifest.browser_specific_settings?.gecko?.data_collection_permissions,
+    "browser_specific_settings.gecko.data_collection_permissions missing (required for AMO publish)"
   );
 });
 
 test("data_collection_permissions.required is present and is an array", () => {
   assert.ok(
-    Array.isArray(manifest.data_collection_permissions?.required),
-    "data_collection_permissions.required must be an array"
+    Array.isArray(manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required),
+    "browser_specific_settings.gecko.data_collection_permissions.required must be an array"
   );
 });
 

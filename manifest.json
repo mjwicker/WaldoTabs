@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Waldo Tabs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Agentic tab conductor — resource tracking, hibernation, AI automation, and tab optimization for local-first research workflows",
   "icons": {
     "48": "icons/icon-48.png",
@@ -14,16 +14,16 @@
     "scripting",
     "identity"
   ],
-  "data_collection_permissions": {
-    "required": ["none"],
-    "optional": []
-  },
   "host_permissions": [
     "<all_urls>"
   ],
   "browser_specific_settings": {
     "gecko": {
       "id": "waldo-tabs@waldo.local",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      },
       "strict_min_version": "112.0"
     },
     "gecko_android": {

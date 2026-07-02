@@ -135,10 +135,22 @@
     #globalStatus.ok { color: #6ee7b7; }
     #globalStatus.err { color: #f87171; }
 
+    /* Per-card inline message — sits right next to the button the user just clicked,
+       instead of relying solely on #globalStatus (which is far below the fold on a
+       long settings page and easy to miss). */
+    .card-msg { font-size: 11px; margin-top: 8px; min-height: 14px; line-height: 1.4; }
+    .card-msg.ok { color: #6ee7b7; }
+    .card-msg.err { color: #f87171; }
+
     /* ── Behaviour section ── */
     .toggle {
       position: relative; display: inline-block; width: 34px; height: 18px;
+      flex-shrink: 0;
     }
+    /* .form-row label sets min-width:120px for the text labels (Idle threshold, Auto-optimize);
+       .toggle is itself a <label>, so that rule was also stretching the switch track to 120px+.
+       Higher-specificity override keeps the switch at its intended 34px. */
+    .form-row .toggle { min-width: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .slider {
       position: absolute; cursor: pointer;
@@ -151,7 +163,9 @@
       background: #aaa; border-radius: 50%; transition: .2s;
     }
     input:checked + .slider { background: #6d28d9; }
-    input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+    /* Knob position keys off the track's own edges (left/right) rather than a fixed
+       translateX distance, so it stays flush to the edge regardless of track width. */
+    input:checked + .slider:before { left: auto; right: 3px; background: #fff; }
 
     /* ── Inline element class overrides ── */
     .page-header-note { font-size: 11px; color: #888; margin-top: 4px; }
@@ -190,7 +204,7 @@
           </div>
           <div class="form-row">
             <label>Model</label>
-            <input type="text" id="model-openrouter" value="meta-llama/llama-3.1-8b-instruct:free">
+            <input type="text" id="model-openrouter" value="meta-llama/llama-3.1-8b-instruct">
           </div>
           <p class="page-header-note">
             Get a key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>.
@@ -200,6 +214,7 @@
             <button class="btn primary" data-action="select" data-provider="openrouter">Use OpenRouter</button>
             <button class="btn" data-action="test" data-provider="openrouter">Test Connection</button>
           </div>
+          <div class="card-msg" id="msg-openrouter"></div>
         </div>
       </div>
 
@@ -236,15 +251,23 @@
                 <span>🔬 Phi-3 Mini — very fast, low RAM</span>
               </label>
             </div>
-            <p class="pull-hint">Run in terminal: <code id="pullCommand">ollama pull llama3.2</code></p>
           </div>
           <div class="btn-row">
             <button class="btn primary" data-action="select" data-provider="ollama">Use Ollama</button>
             <button class="btn" id="retryOllamaBtn">↺ Retry detect</button>
+            <button class="btn" id="openOllamaBtn" title="Open Ollama app">🖥️ Open Ollama</button>
             <a href="https://ollama.com/download" target="_blank" class="btn hidden" id="downloadOllamaBtn">
               📥 Download Ollama
             </a>
           </div>
+          <div id="pullNowSection" class="hidden">
+            <p class="pull-hint">Model not installed. Pull it with:</p>
+            <div class="btn-row">
+              <code id="pullCommandDisplay" style="padding:6px 8px;background:#2e2e4a;border-radius:5px;font-size:11px;color:#a855f7;"></code>
+              <button class="btn" id="copyPullBtn">📋 Copy command</button>
+            </div>
+          </div>
+          <div class="card-msg" id="msg-ollama"></div>
         </div>
       </div>
     </div>
@@ -274,6 +297,7 @@
             <button class="btn" id="googleConnectBtn">Connect Google account →</button>
             <button class="btn danger hidden" id="googleDisconnectBtn">Disconnect</button>
           </div>
+          <div class="card-msg" id="msg-google"></div>
         </div>
       </div>
 
@@ -301,6 +325,7 @@
             <button class="btn primary" data-action="select" data-provider="openai">Use OpenAI</button>
             <button class="btn" data-action="test" data-provider="openai">Test Connection</button>
           </div>
+          <div class="card-msg" id="msg-openai"></div>
         </div>
       </div>
 
@@ -328,6 +353,7 @@
             <button class="btn primary" data-action="select" data-provider="anthropic">Use Anthropic</button>
             <button class="btn" data-action="test" data-provider="anthropic">Test Connection</button>
           </div>
+          <div class="card-msg" id="msg-anthropic"></div>
         </div>
       </div>
 
@@ -355,6 +381,7 @@
             <button class="btn primary" data-action="select" data-provider="mistral">Use Mistral</button>
             <button class="btn" data-action="test" data-provider="mistral">Test Connection</button>
           </div>
+          <div class="card-msg" id="msg-mistral"></div>
         </div>
       </div>
 
@@ -386,6 +413,7 @@
             <button class="btn primary" data-action="select" data-provider="custom">Use Custom</button>
             <button class="btn" data-action="test" data-provider="custom">Test Connection</button>
           </div>
+          <div class="card-msg" id="msg-custom"></div>
         </div>
       </div>
     </div>

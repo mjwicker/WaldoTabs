@@ -27,7 +27,10 @@ function makeListenerRegistry() {
   };
 }
 
-function makeStorage(initial = {}) {
+// areaName + onChanged registry let set()/remove() fire browser.storage.onChanged,
+// same as real Firefox — needed so extension pages (sidebar, popup) can react when
+// another page (options) changes storage, instead of only reading it once at init.
+function makeStorage(initial = {}, areaName = 'local', onChanged = null) {
   let store = Object.assign({}, initial);
   return {
     async get(keys) {
@@ -43,9 +46,21 @@ function makeStorage(initial = {}) {
       }
       return result;
     },
-    async set(obj) { Object.assign(store, obj); },
+    async set(obj) {
+      const changes = {};
+      for (const [k, newValue] of Object.entries(obj)) {
+        changes[k] = { oldValue: store[k], newValue };
+      }
+      Object.assign(store, obj);
+      if (onChanged) await onChanged._fire(changes, areaName);
+    },
     async remove(keys) {
-      for (const k of [].concat(keys)) delete store[k];
+      const changes = {};
+      for (const k of [].concat(keys)) {
+        changes[k] = { oldValue: store[k], newValue: undefined };
+        delete store[k];
+      }
+      if (onChanged) await onChanged._fire(changes, areaName);
     },
     _store() { return store; },
     _reset(data = {}) { store = Object.assign({}, data); }
@@ -53,8 +68,9 @@ function makeStorage(initial = {}) {
 }
 
 function installBrowserMock(seed = {}) {
-  const localStore  = makeStorage(seed.local   || {});
-  const sessionStore = makeStorage(seed.session || {});
+  const onStorageChanged = makeListenerRegistry();
+  const localStore  = makeStorage(seed.local   || {}, 'local',   onStorageChanged);
+  const sessionStore = makeStorage(seed.session || {}, 'session', onStorageChanged);
 
   let tabsData = (seed.tabs || []).map(t => Object.assign({}, t));
 
@@ -68,7 +84,8 @@ function installBrowserMock(seed = {}) {
   const browser = {
     storage: {
       local: localStore,
-      session: sessionStore
+      session: sessionStore,
+      onChanged: onStorageChanged
     },
 
     tabs: {
@@ -112,18 +129,25 @@ function installBrowserMock(seed = {}) {
       onStartup,
       onInstalled,
       getRedirectURL: () => 'https://mock.extensions.example/callback',
+      // Mirrors real Firefox semantics: an async (or Promise-returning) listener's resolved
+      // return value IS the response — sendResponse()/return-true is a separate convention
+      // for non-async listeners only. See the 2026-07-02 regression fix note in background.js.
       sendMessage: async (msg) => {
-        let response;
         for (const fn of onMessage._listeners) {
-          await new Promise(resolve => {
-            const sendResponse = (r) => { response = r; resolve(); };
-            const ret = fn(msg, {}, sendResponse);
-            // If handler returns falsy (sync), resolve immediately
-            if (!ret) resolve();
-          });
-          if (response !== undefined) break;
+          let settled = false;
+          let sendResponseValue;
+          const sendResponse = (r) => { settled = true; sendResponseValue = r; };
+
+          const ret = fn(msg, {}, sendResponse);
+          if (ret && typeof ret.then === 'function') {
+            const resolved = await ret;
+            const response = resolved !== undefined ? resolved : (settled ? sendResponseValue : undefined);
+            if (response !== undefined) return response;
+          } else if (settled) {
+            return sendResponseValue;
+          }
         }
-        return response;
+        return undefined;
       }
     },
 

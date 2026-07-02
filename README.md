@@ -5,7 +5,7 @@
 > A Firefox/Zen Browser extension that hibernates inactive tabs while preserving their content via screenshot and text summary. Designed for research workflows on memory-constrained hardware. Powered by local or cloud AI — no data leaves your machine unless you configure it.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.2.0-purple)](#)
+[![Version](https://img.shields.io/badge/Version-0.3.2-purple)](#)
 
 ---
 
@@ -91,6 +91,9 @@ WaldoTabs/
 
 | Version | Date | Notes |
 |---------|------|-------|
+| **v0.3.2** | 2026-07-02 | Fix background.js message-passing (async listener + sendResponse mismatch was silently returning `true` instead of real responses), Settings-page slider width, inline per-card connection error messages, sidebar provider chip live-updating across tabs, and default OpenRouter model (was hitting free-tier rate limits). Add Ollama pull-now button + `ollama://` deep-link. |
+| **v0.3.1** | 2026-06-24 | Fix `manifest.json` `data_collection_permissions` nesting for Firefox AMO (T-TABS-MANIFEST-1). |
+| **v0.3.0** | 2026-06-06 | Sidebar chat, agentic page actions (click/fill via content scripts), full settings page, live model wiring, E2E CI. |
 | **v0.2.0** | 2026-04-25 | Cache persistence (survives worker restart). Improved popup state. |
 | **v0.1.1** | 2026-04-24 | Initial release — hibernation + screenshot + AI summarization |
 

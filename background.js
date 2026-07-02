@@ -72,64 +72,57 @@ browser.tabs.onRemoved.addListener(async (tabId) => {
 
 // ─── Message Handlers ─────────────────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+// NOTE (regression fix, 2026-07-02): this listener is declared `async`, so per Firefox's
+// documented WebExtension semantics the listener's own resolved return value IS the response —
+// calling `sendResponse(x)` and then `return true` does NOT work here (that pattern is only for
+// non-async listeners). Mixing them meant every branch below silently discarded its real payload
+// and resolved callers' `sendMessage()` awaits with the literal boolean `true` instead. Every
+// branch now returns its value directly instead of calling sendResponse.
+browser.runtime.onMessage.addListener(async (message, sender) => {
   if (message.action === 'initiateGoogleOAuth') {
-    const result = await initiateGoogleOAuth();
-    sendResponse(result);
-    return true;
+    return await initiateGoogleOAuth();
   }
 
   if (message.action === 'getOAuthStatus') {
-    const status = await getOAuthStatus();
-    sendResponse(status);
-    return true;
+    return await getOAuthStatus();
   }
 
   if (message.action === 'disconnectGoogle') {
-    const result = await disconnectGoogle();
-    sendResponse(result);
-    return true;
+    return await disconnectGoogle();
   }
 
   if (message.action === 'optimizeTab') {
     const tab = await browser.tabs.get(message.tabId);
     if (isGoogleDomain(tab.url)) {
-      sendResponse({ success: true, skipped: 'google-domain' });
-      return true;
+      return { success: true, skipped: 'google-domain' };
     }
     await prepareForDiscard(tab);
-    sendResponse({ success: true });
-    return true;
+    return { success: true };
   }
 
   if (message.action === 'wakeTab') {
     await browser.tabs.reload(message.tabId);
-    sendResponse({ success: true });
-    return true;
+    return { success: true };
   }
 
   if (message.action === 'getCachedState') {
-    sendResponse({ cache: Array.from(tabCache.entries()) });
-    return true;
+    return { cache: Array.from(tabCache.entries()) };
   }
 
   if (message.action === 'getSettings') {
     const settings = await browser.storage.local.get('settings');
-    sendResponse(settings.settings || defaultSettings());
-    return true;
+    return settings.settings || defaultSettings();
   }
 
   if (message.action === 'saveSettings') {
     await browser.storage.local.set({ settings: message.settings });
-    sendResponse({ success: true });
-    return true;
+    return { success: true };
   }
 
   // v0.2.0: return persisted cache for popup to reconstruct state
   if (message.action === 'loadPersistedCache') {
     await loadTabCache();
-    sendResponse({ cache: Array.from(tabCache.entries()) });
-    return true;
+    return { cache: Array.from(tabCache.entries()) };
   }
 
   // ── Chat — general conversation + page Q&A ──────────────────────────────────
@@ -138,11 +131,10 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === 'chat') {
     try {
       const content = await callWithSavedSettings(message.messages, { maxTokens: 1000 });
-      sendResponse({ content });
+      return { content };
     } catch (err) {
-      sendResponse({ error: err.message });
+      return { error: err.message };
     }
-    return true;
   }
 
   // ── getPageContext — extract readable text from the active tab ───────────────
@@ -150,7 +142,7 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === 'getPageContext') {
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) { sendResponse({ error: 'No active tab' }); return true; }
+      if (!tab?.id) return { error: 'No active tab' };
 
       const result = await browser.scripting.executeScript({
         target: { tabId: tab.id },
@@ -161,15 +153,14 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
           return document.body?.innerText?.substring(0, 6000) || '';
         }
       });
-      sendResponse({
+      return {
         title:   tab.title || '',
         url:     tab.url   || '',
         content: result[0]?.result || ''
-      });
+      };
     } catch (err) {
-      sendResponse({ error: err.message });
+      return { error: err.message };
     }
-    return true;
   }
 
   // ── pageAction — execute a single primitive on the active tab ────────────────
@@ -178,7 +169,7 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === 'pageAction') {
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) { sendResponse({ error: 'No active tab' }); return true; }
+      if (!tab?.id) return { error: 'No active tab' };
 
       const { tool, args } = message;
       const result = await browser.scripting.executeScript({
@@ -192,11 +183,10 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         },
         args: [tool, args || {}]
       });
-      sendResponse(result[0]?.result || { error: 'No result' });
+      return result[0]?.result || { error: 'No result' };
     } catch (err) {
-      sendResponse({ error: err.message });
+      return { error: err.message };
     }
-    return true;
   }
 
   // Ollama detection — popup.js / options.js call this to discover local Ollama
@@ -208,15 +198,13 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       if (resp.ok) {
         const data = await resp.json();
         const models = (data.models || []).map(m => m.name);
-        sendResponse({ detected: true, models });
-      } else {
-        sendResponse({ detected: false, models: [] });
+        return { detected: true, models };
       }
+      return { detected: false, models: [] };
     } catch (err) {
       logger.warn('detectOllama: Ollama not reachable', err);
-      sendResponse({ detected: false, models: [] });
+      return { detected: false, models: [] };
     }
-    return true;
   }
 
   // Ollama model validation — popup.js calls this before saving a model selection.
@@ -231,17 +219,14 @@ browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         const matched = models.some(
           name => name === message.model || name.startsWith(message.model + ':')
         );
-        sendResponse(matched
+        return matched
           ? { ok: true }
-          : { ok: false, error: `Model "${message.model}" not found in Ollama` }
-        );
-      } else {
-        sendResponse({ ok: false, error: 'Ollama not reachable' });
+          : { ok: false, error: `Model "${message.model}" not found in Ollama` };
       }
+      return { ok: false, error: 'Ollama not reachable' };
     } catch (err) {
-      sendResponse({ ok: false, error: err.message || 'Connection failed' });
+      return { ok: false, error: err.message || 'Connection failed' };
     }
-    return true;
   }
 });
 

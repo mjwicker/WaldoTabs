@@ -28,6 +28,16 @@ function setCardStatus(providerId, msg, type = '') {
   el.className = `card-status${type ? ' ' + type : ''}`;
 }
 
+// Inline per-card message — shown right next to the button the user just clicked.
+// #globalStatus alone isn't enough: on a long settings page it sits below the fold,
+// so a terse "✗ Error" badge was the only thing users could actually see.
+function setCardMsg(providerId, msg, type = '') {
+  const el = document.getElementById(`msg-${providerId}`);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `card-msg${type ? ' ' + type : ''}`;
+}
+
 // ─── Card expand/collapse ─────────────────────────────────────────────────────
 
 document.querySelectorAll('.card-header').forEach(header => {
@@ -144,13 +154,16 @@ async function testConnection(providerId) {
         const data = await resp.json();
         const n = data.models?.length || 0;
         setCardStatus('ollama', `✓ ${n} model(s)`, 'connected');
+        setCardMsg('ollama', `✅ Connected — ${n} model(s) available.`, 'ok');
         setGlobal(`✅ Ollama connected — ${n} model(s) available.`, 'ok');
       } else {
         setCardStatus('ollama', '✗ Not reachable', 'error');
+        setCardMsg('ollama', `❌ Not reachable at localhost:11434 (HTTP ${resp.status}).`, 'err');
         setGlobal('❌ Ollama not reachable at localhost:11434.', 'err');
       }
-    } catch {
+    } catch (err) {
       setCardStatus('ollama', '✗ Not found', 'error');
+      setCardMsg('ollama', `❌ Ollama not running (${err.message}). Download from ollama.com/download.`, 'err');
       setGlobal('❌ Ollama not running. Download from ollama.com/download.', 'err');
     }
     return;
@@ -167,7 +180,11 @@ async function testConnection(providerId) {
   const apiKey = document.getElementById(`key-${providerId}`)?.value.trim();
   const model  = document.getElementById(`model-${providerId}`)?.value.trim();
 
-  if (!endpoint) { setGlobal('❌ No endpoint set.', 'err'); return; }
+  if (!endpoint) {
+    setCardMsg(providerId, '❌ No endpoint set.', 'err');
+    setGlobal('❌ No endpoint set.', 'err');
+    return;
+  }
 
   try {
     const headers = { 'Content-Type': 'application/json' };
@@ -182,15 +199,20 @@ async function testConnection(providerId) {
     });
     if (resp.ok) {
       setCardStatus(providerId, '✓ Connected', 'connected');
+      setCardMsg(providerId, '✅ Connected.', 'ok');
       setGlobal(`✅ ${providerId} connected.`, 'ok');
     } else {
       const err = await resp.json().catch(() => ({}));
-      const msg = err.error?.message || `HTTP ${resp.status}`;
+      const msg = err.error?.message || `HTTP ${resp.status} ${resp.statusText}`;
       setCardStatus(providerId, '✗ Error', 'error');
+      setCardMsg(providerId, `❌ ${msg}`, 'err');
       setGlobal(`❌ ${providerId}: ${msg}`, 'err');
     }
   } catch (err) {
+    // Network-level failure (DNS, offline, blocked request) — the browser gives no more
+    // detail than this for security reasons, but at least say so instead of just "Failed".
     setCardStatus(providerId, '✗ Failed', 'error');
+    setCardMsg(providerId, `❌ Request failed: ${err.message}. Check the endpoint URL and your network connection.`, 'err');
     setGlobal(`❌ ${providerId}: ${err.message}`, 'err');
   }
 }
@@ -205,28 +227,78 @@ async function detectOllama() {
   const result = await browser.runtime.sendMessage({ action: 'detectOllama' });
   const modelSection = document.getElementById('ollamaModelSection');
   const downloadBtn  = document.getElementById('downloadOllamaBtn');
+  const openBtn      = document.getElementById('openOllamaBtn');
+  const pullSection  = document.getElementById('pullNowSection');
 
   if (result.detected) {
     detectEl.className = 'ollama-detect ok';
     detectEl.textContent = `✅ Ollama running — ${result.models.length} model(s) installed`;
     modelSection.style.display = 'block';
     downloadBtn.style.display = 'none';
+    openBtn.style.display = 'none';  // already running, no need to open
     setCardStatus('ollama', '✓ Detected', 'connected');
+    updatePullNow(result.models || []);
   } else {
     detectEl.className = 'ollama-detect err';
     detectEl.textContent = '❌ Ollama not found at localhost:11434. Is it running?';
     modelSection.style.display = 'none';
     downloadBtn.style.display = 'inline-block';
+    openBtn.style.display = 'inline-block';  // show deep-link when not running
+    pullSection.classList.add('hidden');
     setCardStatus('ollama', '✗ Not found', 'error');
   }
 }
 
+// ─── Pull Now button — show when selected model isn't installed ───────────────
+
+function updatePullNow(installedModels) {
+  const selected = document.querySelector('input[name="ollamaModel"]:checked');
+  if (!selected) return;
+  const modelName = selected.value;
+  const pullSection = document.getElementById('pullNowSection');
+  const pullDisplay = document.getElementById('pullCommandDisplay');
+  const isInstalled = installedModels.some(m => m.name === modelName ||
+                                                 m.name === `${modelName}:latest`);
+  if (!isInstalled) {
+    pullSection.classList.remove('hidden');
+    pullDisplay.textContent = `ollama pull ${modelName}`;
+  } else {
+    pullSection.classList.add('hidden');
+  }
+}
+
+// ─── Open Ollama (deep-link) ──────────────────────────────────────────────────
+
+document.getElementById('openOllamaBtn').addEventListener('click', () => {
+  // Attempt ollama:// deep-link — opens the Ollama desktop app if installed.
+  // Falls back silently if the scheme is unrecognized.
+  try {
+    window.location.href = 'ollama://';
+  } catch {
+    // Scheme not supported — download button is also visible as fallback.
+  }
+});
+
+// ─── Copy pull command ────────────────────────────────────────────────────────
+
+document.getElementById('copyPullBtn').addEventListener('click', async () => {
+  const cmd = document.getElementById('pullCommandDisplay').textContent;
+  try {
+    await navigator.clipboard.writeText(cmd);
+    setGlobal('📋 Command copied to clipboard!', 'ok');
+  } catch {
+    setGlobal('❌ Could not copy. Please copy manually.', 'err');
+  }
+});
+
 document.getElementById('retryOllamaBtn').addEventListener('click', detectOllama);
 
-// Update pull command when model radio changes
+// Update pull-now display when model radio changes
 document.querySelectorAll('input[name="ollamaModel"]').forEach(radio => {
-  radio.addEventListener('change', (e) => {
-    document.getElementById('pullCommand').textContent = `ollama pull ${e.target.value}`;
+  radio.addEventListener('change', async () => {
+    // Re-detect to get fresh installed model list for pull-now check
+    const result = await browser.runtime.sendMessage({ action: 'detectOllama' });
+    if (result.detected) updatePullNow(result.models || []);
   });
 });
 
@@ -234,13 +306,16 @@ document.querySelectorAll('input[name="ollamaModel"]').forEach(radio => {
 
 document.getElementById('googleConnectBtn').addEventListener('click', async () => {
   setGlobal('Launching Google sign-in…');
+  setCardMsg('google', 'Launching Google sign-in…');
   const result = await browser.runtime.sendMessage({ action: 'initiateGoogleOAuth' });
   if (result.success) {
     setCardStatus('google', '✓ Connected', 'connected');
+    setCardMsg('google', '✅ Connected.', 'ok');
     setGlobal('✅ Google AI connected.', 'ok');
     document.getElementById('googleConnectBtn').style.display = 'none';
     document.getElementById('googleDisconnectBtn').style.display = 'inline-block';
   } else {
+    setCardMsg('google', `❌ ${result.error}`, 'err');
     setGlobal(`❌ Google OAuth failed: ${result.error}`, 'err');
   }
 });
@@ -248,6 +323,7 @@ document.getElementById('googleConnectBtn').addEventListener('click', async () =
 document.getElementById('googleDisconnectBtn').addEventListener('click', async () => {
   await browser.runtime.sendMessage({ action: 'disconnectGoogle' });
   setCardStatus('google', '');
+  setCardMsg('google', '');
   setGlobal('Google AI disconnected.', '');
   document.getElementById('googleConnectBtn').style.display = 'inline-block';
   document.getElementById('googleDisconnectBtn').style.display = 'none';

@@ -300,6 +300,16 @@ chatInput.addEventListener('input', () => {
   chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
 });
 
+// ─── Live settings sync ───────────────────────────────────────────────────────
+// The sidebar and Settings (options.html) are separate extension pages. Without this,
+// a sidebar panel opened before a provider was configured would show a stale "No AI"
+// badge forever, even after the user configures and connects a provider in Settings.
+browser.storage.onChanged.addListener(async (changes, area) => {
+  if (area === 'local' && changes.settings) {
+    await refreshProviderChip();
+  }
+});
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 refreshProviderChip();

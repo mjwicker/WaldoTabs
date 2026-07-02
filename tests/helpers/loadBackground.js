@@ -51,29 +51,29 @@ function loadBackground({ browser, fetch: mockFetch } = {}) {
 }
 
 // Helper: invoke the registered onMessage handler and await the response.
-// Resolves with undefined if the handler completes without calling sendResponse
-// (e.g. unrecognised action falls through the if-chain).
+//
+// Mirrors real Firefox semantics: if the listener is async (or returns a Promise), its
+// *resolved return value* is the response — sendResponse()/return-true is a separate,
+// mutually-exclusive calling convention for non-async listeners only (see the 2026-07-02
+// regression fix note in background.js). This helper prefers the async return value and
+// only falls back to a sendResponse-style callback for listeners that use that pattern.
 async function sendMessage(browser, msg) {
-  return new Promise((resolve) => {
-    const handler = browser.runtime.onMessage._listeners[0];
-    if (!handler) throw new Error('No onMessage listener registered — did loadBackground run?');
+  const handler = browser.runtime.onMessage._listeners[0];
+  if (!handler) throw new Error('No onMessage listener registered — did loadBackground run?');
 
-    let settled = false;
-    const sendResponse = (r) => {
-      if (!settled) { settled = true; resolve(r); }
-    };
+  let settled = false;
+  let sendResponseValue;
+  const sendResponse = (r) => { settled = true; sendResponseValue = r; };
 
-    const ret = handler(msg, {}, sendResponse);
-    // If the handler returns a Promise (async), wait for it to finish.
-    // If it finishes without having called sendResponse, resolve with undefined.
-    if (ret && typeof ret.then === 'function') {
-      ret.then(() => { if (!settled) { settled = true; resolve(undefined); } })
-         .catch(() => { if (!settled) { settled = true; resolve(undefined); } });
-    } else if (!settled) {
-      // Synchronous handler that didn't call sendResponse
-      resolve(undefined);
-    }
-  });
+  const ret = handler(msg, {}, sendResponse);
+
+  if (ret && typeof ret.then === 'function') {
+    const resolved = await ret;
+    // Async listener: its resolved value is the real response, matching Firefox.
+    return resolved !== undefined ? resolved : (settled ? sendResponseValue : undefined);
+  }
+  // Synchronous listener using the sendResponse + return-true callback convention.
+  return settled ? sendResponseValue : undefined;
 }
 
 module.exports = { loadBackground, sendMessage };

@@ -1,6 +1,6 @@
 {
   "name": "waldo-tabs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Agentic tab conductor — resource tracking, hibernation, AI automation",
   "scripts": {

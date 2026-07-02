@@ -207,6 +207,80 @@ if (jsdom) {
     assert.ok(autoOptimizeLabel, 'should have auto-optimize label');
   });
 
+  // ── Test: inline per-card error messages (2026-07-02 regression) ────────────
+  // Previously, testConnection() only wrote descriptive errors to #globalStatus,
+  // which sits below the fold on a long settings page — users only ever saw the
+  // terse "✗ Error" card badge and had no way to know *why* it failed.
+
+  test('every provider card has an inline card-msg element for descriptive feedback', () => {
+    const dom = makeOptionsDOM();
+    const providers = ['openrouter', 'ollama', 'google', 'openai', 'anthropic', 'mistral', 'custom'];
+    providers.forEach(p => {
+      const el = dom.window.document.getElementById(`msg-${p}`);
+      assert.ok(el, `should have msg-${p} element`);
+      assert.ok(el.classList.contains('card-msg'), `msg-${p} should have card-msg class`);
+    });
+  });
+
+  test('testConnection surfaces the API\'s descriptive error inline next to the button', async () => {
+    const dom = makeOptionsDOM();
+    const browserMock = makeOptionsBrowserMock();
+    loadOptionsInDOM(dom, browserMock);
+
+    dom.window.fetch = async () => ({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      json: async () => ({ error: { message: 'No auth credentials found' } })
+    });
+    dom.window.document.getElementById('key-openrouter').value = 'bad-key';
+
+    await dom.window.testConnection('openrouter');
+
+    const msgEl = dom.window.document.getElementById('msg-openrouter');
+    assert.ok(msgEl, 'msg-openrouter element should exist');
+    assert.ok(
+      msgEl.textContent.includes('No auth credentials found'),
+      `expected the API's actual error message inline, got: "${msgEl.textContent}"`
+    );
+    assert.ok(msgEl.className.includes('err'), 'msg-openrouter should carry the err class');
+  });
+
+  test('testConnection surfaces a network-failure message inline (not just "Failed")', async () => {
+    const dom = makeOptionsDOM();
+    const browserMock = makeOptionsBrowserMock();
+    loadOptionsInDOM(dom, browserMock);
+
+    dom.window.fetch = async () => { throw new Error('NetworkError when attempting to fetch resource'); };
+    dom.window.document.getElementById('key-openrouter').value = 'sk-or-test';
+
+    await dom.window.testConnection('openrouter');
+
+    const msgEl = dom.window.document.getElementById('msg-openrouter');
+    assert.ok(
+      msgEl.textContent.includes('NetworkError when attempting to fetch resource'),
+      `expected the underlying error message inline, got: "${msgEl.textContent}"`
+    );
+  });
+
+  test('testConnection clears to a success message on the happy path', async () => {
+    const dom = makeOptionsDOM();
+    const browserMock = makeOptionsBrowserMock();
+    loadOptionsInDOM(dom, browserMock);
+
+    dom.window.fetch = async () => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'pong' } }] })
+    });
+    dom.window.document.getElementById('key-openrouter').value = 'sk-or-test';
+
+    await dom.window.testConnection('openrouter');
+
+    const msgEl = dom.window.document.getElementById('msg-openrouter');
+    assert.ok(msgEl.className.includes('ok'), 'msg-openrouter should carry the ok class on success');
+    assert.ok(msgEl.textContent.length > 0, 'success message should not be empty');
+  });
+
 } else {
   test('options page tests skipped — install jsdom: npm install --save-dev jsdom', () => {
     assert.ok(true, 'skipped: jsdom not installed');

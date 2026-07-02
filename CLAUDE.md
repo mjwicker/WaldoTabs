@@ -16,12 +16,15 @@ identity + conventions only.
 - API input: OpenAI-compatible `POST /v1/chat/completions` — works with OpenRouter, Ollama,
   llama.cpp server, and Waldo's `/v1/chat/completions` endpoint
 
-## v0.1.1 State
+## v0.3.2 State
 - Hibernation (discard + screenshot + summary) ✅
-- Popup UI (settings, optimize buttons) ✅
-- Agentic orchestration (TODO v0.2.0)
-- Resource tracking (TODO v0.2.0)
-- Native Msg host (TODO v0.2.0)
+- Popup UI + sidebar (settings, optimize, agent chat) ✅
+- Agentic page actions (click/fill via content scripts) ✅
+- Full settings page + OAuth provider cards ✅
+- Ollama pull-now button + `ollama://` deep-link ✅
+- Sidebar provider chip live-updates when Settings change in another tab ✅
+- Inline per-card connection error messages (not just a terse badge) ✅
+- v0.2 features now shipped; future work in roadmap.
 
 ## Test Discipline
 

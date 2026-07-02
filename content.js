@@ -36,7 +36,20 @@
   // Called by background.js via executeScript after user approves each action.
   // All return a plain observation string so the model can reason about the result.
 
-  window._waldoTabsAction = function (tool, args) {
+  window._waldoTabsAction = async function (tool, args) {
+    if (tool === 'read_content') {
+      // On-demand page reading for the agentic loop — separate from the "Use this page"
+      // toggle (which proactively injects content into every turn). Lets the model answer
+      // "what does this page say" even when that toggle is off, instead of only ever
+      // seeing interactive-element labels via list_interactive.
+      const article = await window._waldoTabsExtract({ maxLength: 4000 });
+      const label = article.byline ? `${article.title} (by ${article.byline})` : (article.title || '(no title)');
+      return {
+        ok: true,
+        observation: `Page: ${label} — ${location.href}\n\n${article.content || '(no readable content found on this page)'}`
+      };
+    }
+
     if (tool === 'list_interactive') {
       // Index every visible interactive element; stamp data-waldo-idx for stable addressing
       const SELECTORS = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [role="button"]';
@@ -56,9 +69,13 @@
         return `[${i}] ${tag}${type ? ':' + type : ''} — ${text || '(no label)'}`;
       });
 
+      // Page identity first — without this the model has no way to know what page it's
+      // on (title/URL aren't in "Use this page" context unless that toggle is on) and
+      // will confidently hallucinate a guess instead of saying it doesn't know.
+      const pageLine = `Page: ${document.title || '(no title)'} — ${location.href}`;
       return { ok: true, observation: items.length
-        ? `Interactive elements (use index to act):\n${items.join('\n')}`
-        : 'No interactive elements found on this page.' };
+        ? `${pageLine}\n\nInteractive elements (use index to act):\n${items.join('\n')}`
+        : `${pageLine}\n\nNo interactive elements found on this page.` };
     }
 
     if (tool === 'click') {
@@ -94,7 +111,7 @@
       return { ok: true, observation: `Scrolled ${dir} by ${delta}px` };
     }
 
-    return { ok: false, observation: `Unknown tool: ${tool}. Available: list_interactive, click, fill, scroll` };
+    return { ok: false, observation: `Unknown tool: ${tool}. Available: read_content, list_interactive, click, fill, scroll` };
   };
 
   window._waldoTabsQuickExtract = function (maxLength = 4000) {

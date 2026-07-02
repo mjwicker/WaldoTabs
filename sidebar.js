@@ -106,14 +106,17 @@ usePageCtx.addEventListener('change', async () => {
 function buildMessages(userText) {
   const systemParts = [
     'You are Waldo, a helpful browser assistant.',
-    'When the user asks you to interact with the page, reply with a JSON tool call in a fenced code block like this:',
+    'When you need to read or interact with the current page, reply with a JSON tool call in a fenced code block like this:',
     '```json\n{"tool": "list_interactive"}\n```',
     'or',
     '```json\n{"tool": "click", "args": {"index": 2}}\n```',
-    'Available tools: list_interactive | click {"index":N} | fill {"index":N,"value":"text"} | scroll {"index":N} or scroll {"direction":"down","pixels":400}',
-    'Always call list_interactive first before clicking or filling.',
-    'Only use tools when the user explicitly asks you to act on the page.',
-    'For reading or answering questions about content, reply in plain prose — no tool calls.',
+    'Available tools: list_interactive | read_content | click {"index":N} | fill {"index":N,"value":"text"} | scroll {"index":N} or scroll {"direction":"down","pixels":400}',
+    'list_interactive returns the page title, URL, and a list of clickable elements — call it before clicking/filling, or when the user asks what page/site they are on.',
+    'read_content returns the page title, URL, and its main readable text — call it whenever the user asks about the page\'s content (e.g. "summarize this", "what does this say", "tell me about this page") and you do not already have page context below.',
+    'If "Use this page" is off, you have NO information about the current page — not its title, URL, or content — until you call list_interactive or read_content.',
+    'If page context IS provided below, you already have the content; do not call read_content again for the same question.',
+    'For general conversation unrelated to the current page, no tool call is needed.',
+    'Never guess or state a specific site name, URL, or page content you have not actually been given — say plainly that you do not know, or call the appropriate tool to find out.',
   ];
 
   if (pageContext?.content) {

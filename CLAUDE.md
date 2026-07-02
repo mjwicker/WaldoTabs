@@ -16,7 +16,7 @@ identity + conventions only.
 - API input: OpenAI-compatible `POST /v1/chat/completions` — works with OpenRouter, Ollama,
   llama.cpp server, and Waldo's `/v1/chat/completions` endpoint
 
-## v0.3.2 State
+## v0.3.3 State
 - Hibernation (discard + screenshot + summary) ✅
 - Popup UI + sidebar (settings, optimize, agent chat) ✅
 - Agentic page actions (click/fill via content scripts) ✅
@@ -24,6 +24,7 @@ identity + conventions only.
 - Ollama pull-now button + `ollama://` deep-link ✅
 - Sidebar provider chip live-updates when Settings change in another tab ✅
 - Inline per-card connection error messages (not just a terse badge) ✅
+- `list_interactive` reports page title/URL; `read_content` tool for on-demand page reading ✅
 - v0.2 features now shipped; future work in roadmap.
 
 ## Test Discipline

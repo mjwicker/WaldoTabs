@@ -16,9 +16,12 @@ const vm   = require('node:vm');
 const fs   = require('node:fs');
 const path = require('node:path');
 
-const BG_PATH = path.join(__dirname, '..', '..', 'background.js');
+const ROOT = path.join(__dirname, '..', '..');
+const OBS_PATH = path.join(ROOT, 'lib', 'observability.js');
+const BG_PATH = path.join(ROOT, 'background.js');
 
 function loadBackground({ browser, fetch: mockFetch } = {}) {
+  const obsSrc = fs.readFileSync(OBS_PATH, 'utf8');
   const src = fs.readFileSync(BG_PATH, 'utf8');
 
   // Capture any setInterval calls so tests can trigger them manually
@@ -26,7 +29,9 @@ function loadBackground({ browser, fetch: mockFetch } = {}) {
   const mockSetInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
   const mockClearInterval = () => {};
 
-  const ctx = vm.createContext({
+  // Mirror extension load order: lib/observability.js then background.js
+  // Provide globalThis so observability's IIFE attaches WaldoTabsLogger / waldoTabsEmitEvent.
+  const ctx = {
     browser,
     fetch: mockFetch || (() => Promise.reject(new Error('fetch not mocked — seed via loadBackground({ fetch })'))),
     console,
@@ -38,8 +43,11 @@ function loadBackground({ browser, fetch: mockFetch } = {}) {
     URL,
     URLSearchParams,
     _intervals: intervals
-  });
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
 
+  vm.runInContext(obsSrc, ctx);
   vm.runInContext(src, ctx);
 
   // background.js calls loadTabCache() at the bottom (line 399).

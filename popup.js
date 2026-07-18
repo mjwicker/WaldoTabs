@@ -1,15 +1,17 @@
 // popup.js — hub: tab manager + Chat / Settings launchers
+// Logger from lib/observability.js (loaded before this script in popup.html)
 'use strict';
 
-// ─── Browser-compatible logger (mirrors WaldoTabsLogger API from logging_utils.js) ─
-class WaldoTabsLogger {
-  constructor(name) {
-    this._prefix = `[WaldoTabs:${name}]`;
-  }
-  debug(msg, ...args) { console.debug(this._prefix, msg, ...args); }
-  info(msg, ...args)  { console.log(this._prefix, msg, ...args); }
-  warn(msg, ...args)  { console.warn(this._prefix, msg, ...args); }
-  error(msg, ...args) { console.error(this._prefix, msg, ...args); }
+// Fallback for unit tests that load popup.js without observability.js
+if (typeof WaldoTabsLogger === 'undefined') {
+  // eslint-disable-next-line no-var
+  var WaldoTabsLogger = class {
+    constructor(name) { this._prefix = `[WaldoTabs:${name}]`; }
+    debug(m, ...a) { console.debug(this._prefix, m, ...a); }
+    info(m, ...a)  { console.log(this._prefix, m, ...a); }
+    warn(m, ...a)  { console.warn(this._prefix, m, ...a); }
+    error(m, ...a) { console.error(this._prefix, m, ...a); }
+  };
 }
 
 const logger = new WaldoTabsLogger('popup');

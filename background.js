@@ -1,20 +1,10 @@
 // background.js — service worker (brain of the extension)
 // v0.2.0: tabCache persisted to browser.storage.local (survives worker suspension)
-
-// ─── Browser-compatible logger (mirrors WaldoTabsLogger API from logging_utils.js) ─
-// logging_utils.js uses Node fs/path and cannot run in the extension service worker.
-// This inline class provides the same interface backed by console methods.
-class WaldoTabsLogger {
-  constructor(name) {
-    this._prefix = `[WaldoTabs:${name}]`;
-  }
-  debug(msg, ...args) { console.debug(this._prefix, msg, ...args); }
-  info(msg, ...args)  { console.log(this._prefix, msg, ...args); }
-  warn(msg, ...args)  { console.warn(this._prefix, msg, ...args); }
-  error(msg, ...args) { console.error(this._prefix, msg, ...args); }
-}
+//
+// Logger + emitEvent come from lib/observability.js (loaded first via manifest).
 
 const logger = new WaldoTabsLogger('background');
+const emitEvent = typeof waldoTabsEmitEvent === 'function' ? waldoTabsEmitEvent : () => {};
 
 let tabCache = new Map();
 
@@ -35,7 +25,7 @@ async function loadTabCache() {
   const stored = await browser.storage.local.get('tabCache');
   if (stored.tabCache) {
     tabCache = new Map(Object.entries(stored.tabCache));
-    console.log(`[WaldoTabs] Loaded ${tabCache.size} tabs from cache.`);
+    logger.info(`Loaded ${tabCache.size} tabs from cache.`);
   }
 }
 
@@ -273,7 +263,7 @@ async function prepareForDiscard(tab) {
       });
       rawText = extractResult[0]?.result || '';
     } catch (err) {
-      console.warn('[WaldoTabs] Readability extraction failed, using innerText:', err);
+      logger.warn('Readability extraction failed, using innerText:', err);
       try {
         const fallback = await browser.scripting.executeScript({
           target: { tabId: tab.id },
@@ -321,10 +311,23 @@ async function prepareForDiscard(tab) {
     await persistTabCache(); // v0.2.0: persist after every discard
 
     await browser.tabs.discard(tab.id);
-    console.log(`[WaldoTabs] Discarded: ${tab.title}`);
+    logger.info(`Discarded: ${tab.title}`);
+    emitEvent('TAB_DISCARD_OK', {
+      job: 'hibernate',
+      severity: 'INFO',
+      message: `discarded tab ${tab.id}`,
+      tabId: tab.id,
+    });
 
   } catch (err) {
-    console.error('[WaldoTabs] Failed to prepare tab:', tab.title, err);
+    logger.error('Failed to prepare tab:', tab.title, err);
+    emitEvent('TAB_DISCARD_FAIL', {
+      job: 'hibernate',
+      severity: 'ERROR',
+      message: String(err && err.message ? err.message : err).slice(0, 200),
+      tabId: tab.id,
+      error_class: err && err.name ? err.name : 'Error',
+    });
   }
 }
 
@@ -402,6 +405,12 @@ async function summarizeViaApi(text, settings) {
     ], settings, { maxTokens: 100 });
   } catch (err) {
     logger.error('summarizeViaApi: API summarization failed', err);
+    emitEvent('SUMMARY_FAIL', {
+      job: 'summary',
+      severity: 'ERROR',
+      message: String(err && err.message ? err.message : err).slice(0, 200),
+      error_class: err && err.name ? err.name : 'Error',
+    });
     return text.substring(0, 500);
   }
 }
@@ -491,7 +500,12 @@ async function initiateGoogleOAuth() {
 
     return { success: true, provider: 'google' };
   } catch (err) {
-    console.error('[WaldoTabs] Google OAuth failed:', err);
+    logger.error('Google OAuth failed:', err);
+    emitEvent('OAUTH_FAIL', {
+      job: 'oauth',
+      severity: 'ERROR',
+      message: String(err && err.message ? err.message : err).slice(0, 200),
+    });
     return { success: false, error: err.message, provider: 'google' };
   }
 }

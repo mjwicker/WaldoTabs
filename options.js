@@ -1,5 +1,19 @@
 // options.js — full settings page
+// Logger from lib/observability.js (loaded before this script in options.html)
 'use strict';
+
+if (typeof WaldoTabsLogger === 'undefined') {
+  // eslint-disable-next-line no-var
+  var WaldoTabsLogger = class {
+    constructor(name) { this._prefix = `[WaldoTabs:${name}]`; }
+    debug(m, ...a) { console.debug(this._prefix, m, ...a); }
+    info(m, ...a)  { console.log(this._prefix, m, ...a); }
+    warn(m, ...a)  { console.warn(this._prefix, m, ...a); }
+    error(m, ...a) { console.error(this._prefix, m, ...a); }
+  };
+}
+
+const logger = new WaldoTabsLogger('options');
 
 const PROVIDERS = {
   openrouter: { endpoint: 'https://openrouter.ai/api', authMethod: 'apikey' },

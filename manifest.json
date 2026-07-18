@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Waldo Tabs",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Agentic tab conductor — resource tracking, hibernation, AI automation, and tab optimization for local-first research workflows",
   "icons": {
     "48": "icons/icon-48.png",
@@ -31,7 +31,7 @@
     }
   },
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["lib/observability.js", "background.js"]
   },
   "action": {
     "default_popup": "popup.html",

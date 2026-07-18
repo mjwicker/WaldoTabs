@@ -5,7 +5,7 @@
 > A Firefox/Zen Browser extension that hibernates inactive tabs while preserving their content via screenshot and text summary. Designed for research workflows on memory-constrained hardware. Powered by local or cloud AI — no data leaves your machine unless you configure it.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.3.3-purple)](#)
+[![Version](https://img.shields.io/badge/Version-0.3.4-purple)](#)
 
 ---
 
@@ -91,6 +91,7 @@ WaldoTabs/
 
 | Version | Date | Notes |
 |---------|------|-------|
+| **v0.3.4** | 2026-07-18 | Observability wiring (browser + Node event logging, `OBSERVABILITY.md`) and v1.0 publish prep (README FAQ, clean CSP audit). |
 | **v0.3.3** | 2026-07-02 | Fix `list_interactive` giving the model zero page-identity info (no title/URL), which caused it to hallucinate a site guess instead of saying it didn't know. Add a `read_content` agentic tool so the model can read page text on demand without requiring "Use this page" to be toggled first. |
 | **v0.3.2** | 2026-07-02 | Fix background.js message-passing (async listener + sendResponse mismatch was silently returning `true` instead of real responses), Settings-page slider width, inline per-card connection error messages, sidebar provider chip live-updating across tabs, and default OpenRouter model (was hitting free-tier rate limits). Add Ollama pull-now button + `ollama://` deep-link. |
 | **v0.3.1** | 2026-06-24 | Fix `manifest.json` `data_collection_permissions` nesting for Firefox AMO (T-TABS-MANIFEST-1). |
@@ -106,6 +107,28 @@ WaldoTabs/
 - API keys are stored only in `browser.storage.local` (your browser profile)
 - OAuth tokens (when supported) are stored in `browser.storage.session` (cleared on close)
 - No telemetry, no analytics, no third-party scripts
+
+---
+
+## FAQ
+
+**Which browsers are supported?**
+Firefox and Zen Browser for v1.0 (Manifest V3, `browser.*` APIs). Chrome/Chromium is a future milestone, not yet supported.
+
+**Do I need an AI provider configured to use it?**
+No — tab hibernation, screenshot capture, and text extraction all work with no provider configured. AI summaries and agentic page actions (click/fill/read) require one.
+
+**Why does it ask for access to all sites (`<all_urls>`)?**
+Hibernation needs to capture a screenshot and extract readable text from whatever tab you're discarding, and agentic actions need to interact with whatever page you're on — both work on arbitrary sites, so the permission is broad by necessity. Nothing is sent anywhere unless you've configured an AI provider, and even then only the specific text/action you trigger is sent, never a background crawl.
+
+**What happens to my discarded tabs if the browser or extension restarts?**
+Tab state (screenshot + summary) is cached and survives service worker restarts (since v0.2.0), so a discarded tab still shows its captured content after a restart.
+
+**Is my API key safe?**
+It's stored only in `browser.storage.local`, scoped to your browser profile, and only sent to the endpoint you configured — never to Waldo or any third party.
+
+**How do I uninstall / revoke access?**
+Remove the extension from `about:addons` like any other Firefox add-on. This also clears its local storage (cached tab state, settings, keys).
 
 ---
 
